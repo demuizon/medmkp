@@ -85,7 +85,9 @@ p {
   width: 42px;
   height: 42px;
   margin-left: auto;
-  place-items: center;
+  align-content: center;
+  justify-items: center;
+  gap: 3px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: white;
@@ -93,14 +95,14 @@ p {
 
 .mobile-menu-button span {
   display: block;
-  width: 18px;
-  height: 2px;
+  width: 17px;
+  height: 1.75px;
   border-radius: 999px;
   background: var(--ink);
 }
 
 .mobile-menu-button span + span {
-  margin-top: 4px;
+  margin-top: 0;
 }
 
 .nav-tabs {
