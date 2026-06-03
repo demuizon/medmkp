@@ -120,6 +120,8 @@ export default function Home() {
   const [orderStep, setOrderStep] = useState(1);
   const [toast, setToast] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [isDraggingInvoice, setIsDraggingInvoice] = useState(false);
+  const [selectedInvoiceName, setSelectedInvoiceName] = useState("");
   const [catalog, setCatalog] = useState([]);
   const [catalogSource, setCatalogSource] = useState("loading");
   const [searchTerm, setSearchTerm] = useState("");
@@ -179,6 +181,26 @@ export default function Home() {
     setToast(message);
     window.clearTimeout(showToast.timer);
     showToast.timer = window.setTimeout(() => setToast(""), 2200);
+  }
+
+  function setInvoiceFile(fileInput, file) {
+    if (!file || !fileInput) return;
+
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      showToast("Upload a PDF invoice for this demo");
+      return;
+    }
+
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    fileInput.files = transfer.files;
+    setSelectedInvoiceName(file.name);
+  }
+
+  function handleInvoiceDrop(event) {
+    event.preventDefault();
+    setIsDraggingInvoice(false);
+    setInvoiceFile(event.currentTarget.querySelector('input[type="file"]'), event.dataTransfer.files?.[0]);
   }
 
   async function handleUpload(event) {
@@ -364,11 +386,35 @@ export default function Home() {
               </div>
 
               <form onSubmit={handleUpload} className="upload-layout">
-                <div className="upload-dropzone">
+                <div
+                  className={`upload-dropzone ${isDraggingInvoice ? "dragging" : ""}`}
+                  onDragEnter={(event) => {
+                    event.preventDefault();
+                    setIsDraggingInvoice(true);
+                  }}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDragLeave={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget)) {
+                      setIsDraggingInvoice(false);
+                    }
+                  }}
+                  onDrop={handleInvoiceDrop}
+                >
                   <div className="upload-icon"><Icon name="icon-cloud-upload" /></div>
-                  <h3>Upload a PDF invoice</h3>
+                  <h3>{isDraggingInvoice ? "Drop invoice to upload" : "Upload a PDF invoice"}</h3>
                   <p>The demo saves the file and turns it into normalized reorder line items for buyer review.</p>
-                  <input className="file-input" data-testid="invoice-file-input" name="file" type="file" accept=".pdf,application/pdf" required />
+                  <input
+                    className="file-input"
+                    data-testid="invoice-file-input"
+                    name="file"
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    required
+                    onChange={(event) => setSelectedInvoiceName(event.target.files?.[0]?.name || "")}
+                  />
+                  <span className={`selected-file ${selectedInvoiceName ? "show" : ""}`}>
+                    {selectedInvoiceName || "Drag a PDF here or choose a file"}
+                  </span>
                   <button className="primary-action compact" data-testid="save-parse-request" type="submit" disabled={uploading}>{uploading ? "Uploading..." : "Create Draft Order"}</button>
                 </div>
 

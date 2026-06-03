@@ -578,6 +578,13 @@ kbd {
   padding: 32px;
   border-style: dashed;
   text-align: center;
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.upload-dropzone.dragging {
+  border-color: var(--blue);
+  background: #eef4ff;
+  box-shadow: 0 0 0 4px rgba(21, 93, 252, 0.08), var(--shadow);
 }
 
 .upload-dropzone h3 {
@@ -640,6 +647,20 @@ kbd {
 .file-input {
   width: min(420px, 100%);
   padding: 10px;
+}
+
+.selected-file {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.selected-file.show {
+  color: var(--blue);
 }
 
 .extracted-preview {
