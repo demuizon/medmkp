@@ -5,6 +5,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
 const PROCESSING_DURATION_MS = 3000;
+const UPLOAD_WIZARD_STEPS = [
+  { key: "upload", label: "Upload" },
+  { key: "review", label: "Review" },
+  { key: "confirm", label: "Confirm" },
+  { key: "submitted", label: "Submitted" },
+];
 
 const suppliers = [
   { name: "Rehab Supply Co.", signal: "EIN verified · PT catalog · 97% on-time" },
@@ -132,6 +138,9 @@ export default function Home() {
   const [selectedInvoiceName, setSelectedInvoiceName] = useState("");
   const [hasUploadedInvoice, setHasUploadedInvoice] = useState(false);
   const [uploadStep, setUploadStep] = useState("upload");
+  const [uploadedDocs, setUploadedDocs] = useState([]);
+  const [showInvoiceSources, setShowInvoiceSources] = useState(false);
+  const [submittingOrder, setSubmittingOrder] = useState(false);
   const [draftItems, setDraftItems] = useState([]);
   const [catalog, setCatalog] = useState([]);
   const [catalogSource, setCatalogSource] = useState("loading");
@@ -189,7 +198,8 @@ export default function Home() {
   const quoteTotal = sumSelected(lineItems);
   const previousTotal = sumPrevious(lineItems);
   const savings = Math.max(previousTotal - quoteTotal, 0);
-  const activeDraftItems = draftItems.filter((item) => item.included);
+  const visibleDraftItems = draftItems.filter((item) => item.documentIds.some((documentId) => uploadedDocs.some((doc) => doc.id === documentId)));
+  const activeDraftItems = visibleDraftItems.filter((item) => item.included);
   const draftTotal = activeDraftItems.reduce((total, item) => total + item.draftQty * item.selected.unitPrice, 0);
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const catalogMatches = useMemo(() => {
@@ -243,7 +253,8 @@ export default function Home() {
 
   async function handleUpload(event) {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
 
     setUploading(true);
     const startedAt = Date.now();
@@ -261,17 +272,56 @@ export default function Home() {
     }
 
     const { request } = await response.json();
+    const documentId = request.id;
     setRequests((current) => [request, ...current]);
     setSelectedRequestId(request.id);
     setHasUploadedInvoice(true);
     setUploadStep("review");
-    setDraftItems(request.lineItems.map((item) => ({
-      ...item,
-      draftQty: item.qty,
-      included: true,
-    })));
+    setUploadedDocs((docs) => [
+      ...docs,
+      {
+        id: documentId,
+        name: request.sourceFileName,
+        itemCount: request.lineItems.length,
+      },
+    ]);
+    setDraftItems((items) => {
+      const byProduct = new Map(items.map((item) => [item.product, item]));
+
+      request.lineItems.forEach((item) => {
+        const existing = byProduct.get(item.product);
+
+        if (existing) {
+          const documentQuantities = {
+            ...(existing.documentQuantities || {}),
+            [documentId]: ((existing.documentQuantities || {})[documentId] || 0) + item.qty,
+          };
+
+          byProduct.set(item.product, {
+            ...existing,
+            draftQty: existing.draftQty + item.qty,
+            included: true,
+            documentQuantities,
+            documentIds: Array.from(new Set([...existing.documentIds, documentId])),
+          });
+          return;
+        }
+
+        byProduct.set(item.product, {
+          ...item,
+          draftQty: item.qty,
+          included: true,
+          documentQuantities: { [documentId]: item.qty },
+          documentIds: [documentId],
+        });
+      });
+
+      return Array.from(byProduct.values());
+    });
     setOrderStep(1);
     setUploading(false);
+    setSelectedInvoiceName("");
+    form.reset();
     showToast("Invoice matched to draft order");
   }
 
@@ -287,6 +337,60 @@ export default function Home() {
       if (item.product !== product) return item;
       return { ...item, included: false };
     }));
+  }
+
+  function removeUploadedDoc(documentId) {
+    const remainingDocs = uploadedDocs.filter((doc) => doc.id !== documentId);
+    setUploadedDocs(remainingDocs);
+    setDraftItems((items) => {
+      return items
+        .map((item) => {
+          const documentIds = item.documentIds.filter((id) => id !== documentId);
+          const documentQuantities = { ...(item.documentQuantities || {}) };
+          const removedQty = documentQuantities[documentId] || 0;
+          delete documentQuantities[documentId];
+          return {
+            ...item,
+            draftQty: Math.max(1, item.draftQty - removedQty),
+            documentQuantities,
+            documentIds,
+            included: documentIds.length > 0 && item.included,
+          };
+        })
+        .filter((item) => item.documentIds.length > 0);
+    });
+
+    if (!remainingDocs.length) {
+      setHasUploadedInvoice(false);
+      setUploadStep("upload");
+      setSelectedInvoiceName("");
+      setShowInvoiceSources(false);
+    } else if (uploadStep === "confirm") {
+      setUploadStep("review");
+    }
+  }
+
+  function resetDraftOrder() {
+    setUploadedDocs([]);
+    setDraftItems([]);
+    setHasUploadedInvoice(false);
+    setUploadStep("upload");
+    setSelectedInvoiceName("");
+    setShowInvoiceSources(false);
+    setSubmittingOrder(false);
+    uploadFormRef.current?.reset();
+  }
+
+  function submitDraftOrder() {
+    if (!activeDraftItems.length || submittingOrder) return;
+
+    setSubmittingOrder(true);
+    window.setTimeout(() => {
+      setSubmittingOrder(false);
+      setUploadStep("submitted");
+      setOrderStep(2);
+      showToast("Order submitted");
+    }, 900);
   }
 
   const navItems = [
@@ -430,14 +534,11 @@ export default function Home() {
 
           {view === "upload" && (
             <section className="view active" data-testid="upload-view" aria-labelledby="uploadHeading">
-              <div className="section-heading first">
-                <div>
-                  <h2 id="uploadHeading">Upload invoice or reorder need</h2>
-                  <p>Start with the buyer's easiest input: a PDF invoice from their current supplier.</p>
-                </div>
+              <h2 id="uploadHeading" className="sr-only">Upload invoice or reorder need</h2>
+              <div className="wizard-header">
                 <div className="wizard-steps" aria-label="Upload progress">
-                  {["Upload", "Review", "Confirm"].map((label, index) => {
-                    const currentIndex = uploadStep === "review" ? 1 : 0;
+                  {UPLOAD_WIZARD_STEPS.map(({ key, label }, index) => {
+                    const currentIndex = UPLOAD_WIZARD_STEPS.findIndex((step) => step.key === uploadStep);
                     const isActive = index === currentIndex;
                     const isDone = index < currentIndex;
 
@@ -451,70 +552,95 @@ export default function Home() {
                 </div>
               </div>
 
-              {uploadStep === "upload" && (
-                <form ref={uploadFormRef} onSubmit={handleUpload} className="upload-layout">
-                  <div
-                    className={`upload-dropzone ${isDraggingInvoice ? "dragging" : ""}`}
-                    onDragEnter={(event) => {
-                      event.preventDefault();
-                      setIsDraggingInvoice(true);
-                    }}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDragLeave={(event) => {
-                      if (!event.currentTarget.contains(event.relatedTarget)) {
-                        setIsDraggingInvoice(false);
-                      }
-                    }}
-                    onDrop={handleInvoiceDrop}
-                  >
-                    <div className="upload-icon"><Icon name="icon-cloud-upload" /></div>
-                    <h3>{uploading ? "Processing invoice..." : isDraggingInvoice ? "Drop PDF invoice" : "Drop PDF invoice here"}</h3>
-                    <p>{selectedInvoiceName || "or click to choose a file"}</p>
-                  {uploading && (
-                    <div className="processing-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={uploadProgress}>
-                      <div className="processing-track">
-                        <div style={{ width: `${uploadProgress}%` }}></div>
-                      </div>
-                      <span>{uploadProgress < 45 ? "Reading PDF" : uploadProgress < 80 ? "Matching products" : "Building draft order"}</span>
+              {uploadStep !== "submitted" && (
+                <>
+                  <form ref={uploadFormRef} onSubmit={handleUpload} className={`upload-layout ${hasUploadedInvoice ? "compact-upload" : ""}`}>
+                    <div
+                      className={`upload-dropzone ${isDraggingInvoice ? "dragging" : ""}`}
+                      onDragEnter={(event) => {
+                        event.preventDefault();
+                        setIsDraggingInvoice(true);
+                      }}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDragLeave={(event) => {
+                        if (!event.currentTarget.contains(event.relatedTarget)) {
+                          setIsDraggingInvoice(false);
+                        }
+                      }}
+                      onDrop={handleInvoiceDrop}
+                    >
+                      <div className="upload-icon"><Icon name="icon-cloud-upload" /></div>
+                      <h3>{uploading ? "Processing invoice..." : isDraggingInvoice ? "Drop PDF invoice" : hasUploadedInvoice ? "Add another invoice" : "Drop PDF invoice here"}</h3>
+                      <p>{uploading ? selectedInvoiceName : selectedInvoiceName || "or click to choose a file"}</p>
+                      {uploading && (
+                        <div className="processing-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={uploadProgress}>
+                          <div className="processing-track">
+                            <div style={{ width: `${uploadProgress}%` }}></div>
+                          </div>
+                          <span>{uploadProgress < 45 ? "Reading PDF" : uploadProgress < 80 ? "Matching products" : "Building draft order"}</span>
+                        </div>
+                      )}
+                      <input
+                        className="file-input"
+                        data-testid="invoice-file-input"
+                        name="file"
+                        type="file"
+                        accept=".pdf,application/pdf"
+                        required
+                        onChange={(event) => uploadInvoiceFile(event.currentTarget, event.currentTarget.files?.[0])}
+                      />
+                      <button className="primary-action compact hidden-submit" data-testid="save-parse-request" type="submit" disabled={uploading}>Create Draft Order</button>
+                      <input type="hidden" name="clinic" value="Northline Rehab" />
+                      <input type="hidden" name="buyer" value="Alex Kim" />
+                      <input type="hidden" name="shippingAddress" value="500 Healthcare Blvd, Nashville, TN" />
+                      <input type="hidden" name="preference" value="Exact brand if possible, alternatives allowed" />
+                    </div>
+                  </form>
+
+                  {uploadedDocs.length > 0 && (
+                    <div className="invoice-sources-bar">
+                      <button className="secondary-action compact" type="button" onClick={() => setShowInvoiceSources(true)}>
+                        <Icon name="icon-file-text" className="button-icon" />
+                        {uploadedDocs.length} invoice source{uploadedDocs.length === 1 ? "" : "s"}
+                      </button>
+                      <button className="text-action clear-order-action" type="button" onClick={resetDraftOrder}>Start over</button>
                     </div>
                   )}
-                    <input
-                      className="file-input"
-                      data-testid="invoice-file-input"
-                      name="file"
-                      type="file"
-                      accept=".pdf,application/pdf"
-                      required
-                      onChange={(event) => uploadInvoiceFile(event.currentTarget, event.currentTarget.files?.[0])}
-                    />
-                    <button className="primary-action compact hidden-submit" data-testid="save-parse-request" type="submit" disabled={uploading}>Create Draft Order</button>
-                  </div>
-
-                  <div className="form-card">
-                    <p className="eyebrow">Buyer Context</p>
-                    <label>Clinic <input name="clinic" defaultValue="Northline Rehab" /></label>
-                    <label>Buyer <input name="buyer" defaultValue="Alex Kim" /></label>
-                    <label>Shipping address <input name="shippingAddress" defaultValue="500 Healthcare Blvd, Nashville, TN" /></label>
-                    <label>Preference
-                      <select name="preference" defaultValue="Exact brand if possible, alternatives allowed">
-                        <option>Exact brand if possible, alternatives allowed</option>
-                        <option>Exact brand only</option>
-                        <option>Best equivalent at lowest total cost</option>
-                      </select>
-                    </label>
-                  </div>
-                </form>
+                </>
               )}
 
               {uploadStep === "review" && (
                 <DraftOrderReview
-                  items={draftItems}
+                  items={visibleDraftItems}
                   activeItems={activeDraftItems}
                   total={draftTotal}
                   onBack={() => setUploadStep("upload")}
-                  onApprove={() => showToast("Draft order approved")}
+                  onApprove={() => {
+                    setUploadStep("confirm");
+                    showToast("Draft order ready");
+                  }}
                   onRemove={removeDraftItem}
                   onQtyChange={updateDraftQty}
+                />
+              )}
+
+              {uploadStep === "confirm" && (
+                <DraftOrderConfirm
+                  activeItems={activeDraftItems}
+                  total={draftTotal}
+                  sourceCount={uploadedDocs.length}
+                  onBack={() => setUploadStep("review")}
+                  onSubmit={submitDraftOrder}
+                  submitting={submittingOrder}
+                />
+              )}
+
+              {uploadStep === "submitted" && (
+                <DraftOrderSubmitted
+                  activeItems={activeDraftItems}
+                  total={draftTotal}
+                  sourceCount={uploadedDocs.length}
+                  onStartOver={resetDraftOrder}
                 />
               )}
             </section>
@@ -756,6 +882,13 @@ export default function Home() {
       </div>
 
       <div className={`toast ${toast ? "show" : ""}`} role="status" aria-live="polite">{toast}</div>
+      {showInvoiceSources && (
+        <InvoiceSourcesModal
+          docs={uploadedDocs}
+          onClose={() => setShowInvoiceSources(false)}
+          onRemove={removeUploadedDoc}
+        />
+      )}
       <IconSprite />
     </>
   );
@@ -862,6 +995,38 @@ function SearchResults({ results, onViewCatalog }) {
   );
 }
 
+function InvoiceSourcesModal({ docs, onClose, onRemove }) {
+  return (
+    <div className="modal-backdrop" role="presentation" onClick={onClose}>
+      <section className="modal-panel invoice-sources-modal" role="dialog" aria-modal="true" aria-labelledby="invoiceSourcesHeading" onClick={(event) => event.stopPropagation()}>
+        <div className="modal-header">
+          <div>
+            <p className="eyebrow">Invoice Sources</p>
+            <h3 id="invoiceSourcesHeading">{docs.length} source{docs.length === 1 ? "" : "s"} feeding this draft order</h3>
+          </div>
+          <button className="icon-button" type="button" aria-label="Close invoice sources" onClick={onClose}>×</button>
+        </div>
+        <div className="uploaded-doc-summary">
+          <strong>{docs.reduce((total, doc) => total + doc.itemCount, 0)}</strong>
+          <span>matched lines across uploaded invoices</span>
+        </div>
+        <div className="uploaded-doc-list">
+          {docs.map((doc) => (
+            <article className="uploaded-doc" key={doc.id}>
+              <Icon name="icon-file-text" className="button-icon" />
+              <span>
+                <strong>{doc.name}</strong>
+                <small>{doc.itemCount} matched item{doc.itemCount === 1 ? "" : "s"}</small>
+              </span>
+              <button className="text-action" type="button" onClick={() => onRemove(doc.id)}>Remove</button>
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function DraftOrderReview({ items, activeItems, total, onBack, onApprove, onRemove, onQtyChange }) {
   return (
     <div className="draft-review">
@@ -909,6 +1074,48 @@ function DraftOrderReview({ items, activeItems, total, onBack, onApprove, onRemo
           <button className="primary-action compact" type="button" onClick={onApprove}>Continue</button>
         </div>
       </aside>
+    </div>
+  );
+}
+
+function DraftOrderConfirm({ activeItems, total, sourceCount, onBack, onSubmit, submitting }) {
+  return (
+    <div className="draft-confirm">
+      <div>
+        <p className="eyebrow">Confirm Order</p>
+        <h3>Order assembled from {sourceCount} invoice{sourceCount === 1 ? "" : "s"}</h3>
+        <p>Review the final total, then submit this order to medMKP for supplier fulfillment.</p>
+      </div>
+      <div className="draft-confirm-total">
+        <span>{activeItems.length} active line item{activeItems.length === 1 ? "" : "s"}</span>
+        <strong>{money.format(total)}</strong>
+      </div>
+      <div className="wizard-actions">
+        <button className="secondary-action compact" type="button" onClick={onBack}>Back to review</button>
+        <button className="primary-action compact" type="button" disabled={!activeItems.length || submitting} onClick={onSubmit}>
+          {submitting ? "Submitting..." : "Submit order"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DraftOrderSubmitted({ activeItems, total, sourceCount, onStartOver }) {
+  return (
+    <div className="draft-submitted">
+      <div className="submitted-mark">
+        <Icon name="icon-clipboard" />
+      </div>
+      <div>
+        <p className="eyebrow">Order Submitted</p>
+        <h3>medMKP is preparing this order for supplier fulfillment.</h3>
+        <p>{activeItems.length} line item{activeItems.length === 1 ? "" : "s"} from {sourceCount} invoice source{sourceCount === 1 ? "" : "s"} have been submitted.</p>
+      </div>
+      <div className="submitted-summary">
+        <div><span>Estimated total</span><strong>{money.format(total)}</strong></div>
+        <div><span>Status</span><strong>Submitted</strong></div>
+      </div>
+      <button className="primary-action compact" type="button" onClick={onStartOver}>Start another order</button>
     </div>
   );
 }
