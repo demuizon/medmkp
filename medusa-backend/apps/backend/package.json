@@ -14,7 +14,7 @@
   ],
   "scripts": {
     "build": "medusa build",
-    "start": "medusa start --host 0.0.0.0 --port ${PORT:-9000}",
+    "start": "medusa start --directory .medusa/server --host 0.0.0.0 --port ${PORT:-9000}",
     "start:render": "npm run start",
     "dev": "medusa develop",
     "db:generate": "medusa db:generate medmkp",
