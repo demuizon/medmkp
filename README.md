@@ -284,6 +284,34 @@ cd medusa-backend
 npm run seed:demo
 ```
 
+If you create the Render web service manually instead of using the Blueprint,
+use one of these matching configurations:
+
+```text
+Root directory: medusa-backend
+Build command: npm install && npm run build --workspace=@dtc/backend
+Start command: npm run start --workspace=@dtc/backend
+```
+
+or:
+
+```text
+Root directory: medusa-backend/apps/backend
+Build command: npm install && npm run build
+Start command: npm start
+```
+
+The start command must bind Medusa to Render's assigned port. The backend
+`npm start` script already does this with:
+
+```bash
+medusa start --host 0.0.0.0 --port ${PORT:-9000}
+```
+
+If the Render deploy builds successfully but the web service times out, check
+the start command first. A plain `medusa start` defaults to port `9000`, while
+Render expects the process to listen on its injected `$PORT`.
+
 Create a Medusa admin user after the first deploy:
 
 ```bash
