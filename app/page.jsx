@@ -14,11 +14,11 @@ const UPLOAD_WIZARD_STEPS = [
 ];
 
 const suppliers = [
-  { name: "Rehab Supply Co.", signal: "EIN verified · PT catalog · 97% on-time" },
-  { name: "Clinical Direct", signal: "ACH ready · 2-day Southeast lanes" },
-  { name: "NeuroStim Supply", signal: "Electrotherapy specialist · certificate current" },
-  { name: "PrimeMed Distributors", signal: "Thomasnet sourced · glove alternatives" },
-  { name: "OrthoPro Wholesale", signal: "Bulk therapy equipment · stock confirmed" },
+  { name: "Dental City", signal: "Public catalog · commodity dental supplies" },
+  { name: "Net32", signal: "Price benchmarks · dental marketplace data" },
+  { name: "Henry Schein", signal: "Current invoice vendor · account pricing" },
+  { name: "Darby Dental", signal: "Dental distributor · catalog refresh pending" },
+  { name: "Safco Dental", signal: "Consumables and operatory supply alternatives" },
 ];
 
 const orderSteps = [
@@ -214,9 +214,9 @@ function LoggedOutLanding({ onEnter }) {
 
       <section className="landing-hero">
         <div className="landing-copy">
-          <span className="landing-pill">Concierge procurement for healthcare</span>
-          <h1>Upload your invoice. Get a better reorder quote.</h1>
-          <p>We analyze your current supplies, compare vetted suppliers, and build a cleaner, lower-cost reorder fast.</p>
+          <span className="landing-pill">Dental spend optimization SaaS</span>
+          <h1>Upload dental invoices. Find supply savings.</h1>
+          <p>We analyze your current dental supply spend, benchmark prices, and produce savings reports your team can act on directly.</p>
           <div className="landing-actions">
             <button className="primary-action" type="button" onClick={() => onEnter("upload")}>
               <Icon name="icon-cloud-upload" className="button-icon" />
@@ -236,7 +236,7 @@ function LoggedOutLanding({ onEnter }) {
         <div className="landing-product" aria-label="MedMKP dashboard preview">
           <div className="preview-sidebar">
             <div className="preview-brand"><BrandMark /></div>
-            {["Dashboard", "Invoices", "Quotes", "Orders", "Suppliers", "Settings"].map((item, index) => (
+            {["Dashboard", "Invoices", "Savings", "Reports", "Suppliers", "Settings"].map((item, index) => (
               <span className={index === 0 ? "active" : ""} key={item}>{item}</span>
             ))}
           </div>
@@ -244,17 +244,17 @@ function LoggedOutLanding({ onEnter }) {
             <div className="preview-header">
               <div>
                 <strong>Welcome back, Alex</strong>
-                <span>Here is what is happening with your requests.</span>
+                <span>Here is what is happening with your dental supply spend.</span>
               </div>
               <button type="button" onClick={() => onEnter("upload")}>Upload Invoice</button>
             </div>
             <div className="preview-metrics">
               <div><span>Invoices Uploaded</span><strong>7</strong><small>This month</small></div>
-              <div><span>Quotes Generated</span><strong>5</strong><small>This month</small></div>
+              <div><span>Savings Reports</span><strong>5</strong><small>This month</small></div>
               <div><span>Avg. Potential Savings</span><strong className="positive">18%</strong><small>vs. current spend</small></div>
             </div>
             <div className="preview-quotes">
-              <div className="preview-section-title"><strong>Recent Quote</strong><button type="button" onClick={() => onEnter("order")}>View all</button></div>
+              <div className="preview-section-title"><strong>Recent Savings Report</strong><button type="button" onClick={() => onEnter("order")}>View all</button></div>
               <article>
                 <Icon name="icon-file-text" className="button-icon" />
                 <span><strong>Invoice #INV-2024-0517</strong><small>May 17, 2024 · 32 items</small></span>
@@ -271,13 +271,13 @@ function LoggedOutLanding({ onEnter }) {
       </section>
 
       <section className="trusted-strip" id="solutions">
-        <h2>Trusted by clinics and healthcare teams</h2>
+        <h2>Built for dental practices and DSOs</h2>
         <div>
-          <span>Chiropractic Clinics</span>
-          <span>Physical Therapy</span>
-          <span>Med Spas</span>
-          <span>Senior Care</span>
-          <span>And more</span>
+          <span>General Dentistry</span>
+          <span>Oral Surgery</span>
+          <span>Orthodontics</span>
+          <span>Multi-location Practices</span>
+          <span>DSOs</span>
         </div>
       </section>
 
@@ -292,20 +292,20 @@ function LoggedOutLanding({ onEnter }) {
           <article>
             <Icon name="icon-search" className="landing-step-icon" />
             <strong>We Compare Suppliers</strong>
-            <p>We compare vetted supplier options and surface the best price, speed, and product fit.</p>
+            <p>We compare cached supplier catalogs, fresh price evidence, and your historical invoice pricing.</p>
           </article>
           <article>
             <Icon name="icon-clipboard" className="landing-step-icon" />
-            <strong>You Approve & Reorder</strong>
-            <p>Review the recommendation, approve the order, and we handle the fulfillment workflow.</p>
+            <strong>You Act On Savings</strong>
+            <p>Review the savings report, negotiate with vendors, or switch suppliers directly outside MedMKP.</p>
           </article>
         </div>
       </section>
 
       <section className="landing-outcomes" id="pricing">
         <div>
-          <h2>Better procurement. Better outcomes.</h2>
-          <p>We help healthcare teams save time and money so they can focus on patient care.</p>
+          <h2>Lower dental supply spend.</h2>
+          <p>We help dental teams find savings without forcing them into a new purchasing workflow.</p>
         </div>
         <article>
           <Icon name="icon-chart" className="landing-step-icon" />
@@ -314,19 +314,19 @@ function LoggedOutLanding({ onEnter }) {
         </article>
         <article>
           <Icon name="icon-package" className="landing-step-icon" />
-          <strong>Fewer Stockouts</strong>
-          <p>Proactive reorder reminders keep critical supplies available.</p>
+          <strong>Price Intelligence</strong>
+          <p>Benchmark current invoices against cached catalogs, snapshots, and reviewed supplier evidence.</p>
         </article>
         <article id="resources">
           <Icon name="icon-settings" className="landing-step-icon" />
-          <strong>Faster Reorders</strong>
-          <p>Concierge support and streamlined workflows reduce repeat ordering time.</p>
+          <strong>Subscription Service</strong>
+          <p>Monthly plans align MedMKP with practice savings instead of supplier transactions.</p>
         </article>
       </section>
 
       <footer className="landing-footer">
         <Icon name="icon-settings" className="button-icon" />
-        Security-first. HIPAA-aware. Built for healthcare procurement.
+        Security-first. HIPAA-aware. Built for dental spend optimization.
       </footer>
     </main>
   );
@@ -656,8 +656,8 @@ export default function Home() {
   const navItems = [
     ["landing", "icon-home", "Dashboard"],
     ["upload", "icon-cloud-upload", "Uploads"],
-    ["quote", "icon-file-text", "Quotes"],
-    ["order", "icon-clipboard", "Orders"],
+    ["quote", "icon-file-text", "Savings"],
+    ["order", "icon-clipboard", "Reports"],
     ["supplier", "icon-users", "Suppliers"],
     ["settings", "icon-settings", "Settings"],
   ];
@@ -756,7 +756,7 @@ export default function Home() {
               <div className="upload-page-heading">
                 <div>
                   <h2 id="uploadHeading">Upload invoice or reorder list</h2>
-                  <p>Upload a supplier invoice or reorder list and we will extract line items for quick quoting.</p>
+                  <p>Upload a dental supplier invoice and we will extract line items for savings analysis.</p>
                 </div>
                 <button
                   className="secondary-action compact"
@@ -794,7 +794,7 @@ export default function Home() {
                           <div className="processing-track">
                             <div style={{ width: `${uploadProgress}%` }}></div>
                           </div>
-                          <span>{uploadProgress < 45 ? "Reading PDF" : uploadProgress < 80 ? "Matching products" : "Building draft order"}</span>
+                          <span>{uploadProgress < 45 ? "Reading PDF" : uploadProgress < 80 ? "Matching products" : "Building savings report"}</span>
                         </div>
                       )}
                       <input
@@ -806,8 +806,8 @@ export default function Home() {
                         required
                         onChange={(event) => uploadInvoiceFile(event.currentTarget, event.currentTarget.files?.[0])}
                       />
-                      <button className="primary-action compact hidden-submit" data-testid="save-parse-request" type="submit" disabled={uploading}>Create Draft Order</button>
-                      <input type="hidden" name="clinic" value="Northline Rehab" />
+                      <button className="primary-action compact hidden-submit" data-testid="save-parse-request" type="submit" disabled={uploading}>Create Savings Analysis</button>
+                      <input type="hidden" name="clinic" value="Northline Dental" />
                       <input type="hidden" name="buyer" value="Alex Kim" />
                       <input type="hidden" name="shippingAddress" value="500 Healthcare Blvd, Nashville, TN" />
                       <input type="hidden" name="preference" value="Exact brand if possible, alternatives allowed" />
@@ -817,9 +817,9 @@ export default function Home() {
                       <label><span className="field-label">Supplier name <b>*</b></span>
                         <select name="supplierName" defaultValue="">
                           <option value="" disabled>Search or select supplier</option>
-                          <option>Integrated Medical</option>
-                          <option>Rehab Supply Co.</option>
-                          <option>Clinical Direct</option>
+                          <option>Henry Schein</option>
+                          <option>Darby Dental</option>
+                          <option>Dental City</option>
                         </select>
                       </label>
                       <label>Order frequency
@@ -843,9 +843,9 @@ export default function Home() {
                           <span>Select date</span>
                         </span>
                       </label>
-                      <label className="toggle-field">This is a recurring order
+                      <label className="toggle-field">Track this as recurring spend
                         <span><i></i></span>
-                        <small>Yes, this is a recurring order</small>
+                        <small>Yes, include this in reorder monitoring</small>
                       </label>
                       <label className="upload-notes"><span className="field-label">Notes <em>(optional)</em></span>
                         <textarea name="notes" maxLength="500" placeholder="Add any special instructions or details for this request..." />
@@ -886,22 +886,22 @@ export default function Home() {
                     <div className="next-card">
                       <h3>What happens next</h3>
                       <div className="next-step"><span><Icon name="icon-cloud-upload" className="button-icon" /></span><div><strong>1. We extract line items</strong><p>Our system reads your file and identifies the items and quantities.</p></div></div>
-                      <div className="next-step"><span><Icon name="icon-users" className="button-icon" /></span><div><strong>2. We compare suppliers</strong><p>We compare vetted supplier options for price, speed, and product fit.</p></div></div>
-                      <div className="next-step"><span><Icon name="icon-dollar-circle" className="button-icon" /></span><div><strong>3. You get the best quote</strong><p>Review recommendations and approve with confidence.</p></div></div>
+                      <div className="next-step"><span><Icon name="icon-users" className="button-icon" /></span><div><strong>2. We benchmark prices</strong><p>We compare cached supplier catalogs, snapshots, and reviewed alternatives.</p></div></div>
+                      <div className="next-step"><span><Icon name="icon-dollar-circle" className="button-icon" /></span><div><strong>3. You get a savings report</strong><p>Review opportunities and decide what to act on outside MedMKP.</p></div></div>
                     </div>
                     <div className="support-card">
                       <Icon name="icon-shield-check" className="button-icon" />
                       <div><strong>Secure & private</strong><p>Your data is encrypted and never shared with suppliers without approval.</p><span>HIPAA-aware · SOC 2 aligned</span></div>
                     </div>
                     <div className="support-card">
-                      <div><strong>Need help?</strong><p>Our team can help you upload and get the right quotes.</p><button type="button"><Icon name="icon-headset" className="button-icon" />Contact support</button></div>
+                      <div><strong>Need help?</strong><p>Our team can help you upload invoices and review savings opportunities.</p><button type="button"><Icon name="icon-headset" className="button-icon" />Contact support</button></div>
                     </div>
                   </aside>
 
                   <div className="upload-submit-bar">
                     <button className="secondary-action compact" type="button" onClick={() => showToast("Draft saved")}>Save draft</button>
                     <button className="primary-action compact" type="button" onClick={submitForQuote} disabled={uploading}>
-                      {uploading ? "Processing..." : "Submit for quote"}
+                      {uploading ? "Processing..." : "Analyze savings"}
                       {!uploading && <Icon name="icon-arrow-right" className="button-icon" />}
                     </button>
                   </div>
@@ -1044,10 +1044,10 @@ export default function Home() {
             <section className="view active" aria-labelledby="supplierHeading">
               <div className="supplier-landing">
                 <p className="pill">For Suppliers</p>
-                <h2 id="supplierHeading">Sell into PT, chiro, and rehab clinics through MedMKP.</h2>
+                <h2 id="supplierHeading">Help dental practices discover better supply pricing through MedMKP.</h2>
                 <p>
                   Supplier onboarding is coming next. For now, this portal will support catalog uploads,
-                  compliance review, storefront setup, inventory updates, and order fulfillment.
+                  pricing evidence, category coverage, and reviewed product matches.
                 </p>
                 <div className="supplier-actions">
                   <button className="primary-action compact" onClick={() => showToast("Supplier login coming soon")}>
@@ -1059,8 +1059,8 @@ export default function Home() {
                 </div>
                 <div className="supplier-feature-grid">
                   <div><Icon name="icon-cloud-upload" className="button-icon" /><strong>Catalog upload</strong><span>CSV, PDF, or portal-assisted SKU intake.</span></div>
-                  <div><Icon name="icon-package" className="button-icon" /><strong>Storefront setup</strong><span>Supplier profile, EIN, certifications, and service lanes.</span></div>
-                  <div><Icon name="icon-clipboard" className="button-icon" /><strong>Order fulfillment</strong><span>Receive confirmed clinic orders after buyer approval.</span></div>
+                  <div><Icon name="icon-package" className="button-icon" /><strong>Supplier profile</strong><span>Category coverage, certifications, and service lanes.</span></div>
+                  <div><Icon name="icon-clipboard" className="button-icon" /><strong>Price snapshots</strong><span>Help practices benchmark savings without MedMKP handling transactions.</span></div>
                 </div>
               </div>
             </section>

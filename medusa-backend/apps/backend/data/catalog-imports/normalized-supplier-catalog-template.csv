@@ -1,0 +1,2 @@
+sku,manufacturer_sku,brand,name,description,category,subcategory,product_line,product_url,pack_size,unit_of_measure,price,price_basis,availability,min_quantity
+EXAMPLE-001,MFG-001,Example Brand,Dental Bibs Blue 500/case,"Disposable dental bibs, blue, 2-ply paper plus poly backing",Dental disposables,Bibs,,https://supplier.example/products/example-001,500/case,case,18.99,case,in_stock,1

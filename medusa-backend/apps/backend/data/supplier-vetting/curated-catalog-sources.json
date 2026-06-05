@@ -1,0 +1,54 @@
+[
+  {
+    "supplier_id": "msup_aprontodental_com",
+    "supplier_name": "Apronto Dental",
+    "slug": "aprontodental-com",
+    "website_url": "https://aprontodental.com",
+    "source_catalog": "aprontodental-com-website",
+    "source_type": "website",
+    "source_url": "https://aprontodental.com",
+    "classification": "catalog_candidate",
+    "confidence_score": 95,
+    "source_company_name": "Curated by MedMKP",
+    "notes": "Public category pages expose product names and prices."
+  },
+  {
+    "supplier_id": "msup_bocadentalregenerative_com",
+    "supplier_name": "Boca Dental Regenerative",
+    "slug": "bocadentalregenerative-com",
+    "website_url": "https://bocadentalregenerative.com",
+    "source_catalog": "bocadentalregenerative-com-website",
+    "source_type": "website",
+    "source_url": "https://bocadentalregenerative.com/disposables/",
+    "classification": "catalog_candidate",
+    "confidence_score": 70,
+    "source_company_name": "Curated by MedMKP",
+    "notes": "Candidate price-bearing disposables page, but headless extraction returned a Cloudflare 403 challenge. Needs manual browser export, cookies, or headed verification before product import."
+  },
+  {
+    "supplier_id": "msup_pearsondental_com",
+    "supplier_name": "Pearson Dental",
+    "slug": "pearsondental-com",
+    "website_url": "https://www.pearsondental.com",
+    "source_catalog": "pearsondental-com-website",
+    "source_type": "website",
+    "source_url": "https://www.pearsondental.com/catalog/product.asp?majcatid=13171&catid=1051&subcatid=50159&pid=2660",
+    "classification": "catalog_candidate",
+    "confidence_score": 95,
+    "source_company_name": "Curated by MedMKP",
+    "notes": "Public product-family pages expose item numbers, manufacturer part numbers, and prices."
+  },
+  {
+    "supplier_id": "msup_tddentalsupply_com",
+    "supplier_name": "TD Dental Supply",
+    "slug": "tddentalsupply-com",
+    "website_url": "https://www.tddentalsupply.com",
+    "source_catalog": "tddentalsupply-com-website",
+    "source_type": "website",
+    "source_url": "https://www.tddentalsupply.com/abrasivesalloys",
+    "classification": "catalog_candidate",
+    "confidence_score": 95,
+    "source_company_name": "Curated by MedMKP",
+    "notes": "Public category pages expose item numbers and prices."
+  }
+]

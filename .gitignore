@@ -4,4 +4,9 @@ node_modules/
 .next/
 .data/
 gudid_full_release_20260601/
+research/products/.venv-catalog/
+research/products/catalog.json
+research/products/raw_catalog.txt
+research/products/structured_catalog.json
+research/products/product_catalogs/
 .env*

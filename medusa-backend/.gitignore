@@ -42,6 +42,14 @@ yarn-error.log*
 # Turbo
 .turbo
 
+# Local MedMKP ingestion/debug artifacts
+**/.medmkp/
+apps/backend/data/supplier-sitemaps/
+apps/backend/data/supplier-url-index/
+apps/backend/data/catalog-imports/supplier-products-export.csv
+apps/backend/data/supplier-vetting/dental-supplier-leads.csv
+apps/backend/data/supplier-vetting/dental-catalog-candidates.csv
+
 # vercel
 .vercel
 

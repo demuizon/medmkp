@@ -39,14 +39,14 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   }
   const request = await medmkp.createProcurementRequests({
     id: `mpr_demo_${Date.now()}`,
-    buyer_name: body.buyer_name ?? "New clinic",
-    buyer_facility_type: "pt",
+    buyer_name: body.buyer_name ?? "New dental practice",
+    buyer_facility_type: "dental",
     buyer_email: body.buyer_email ?? "buyer@example.com",
     status: "uploaded",
-    source_file_name: body.source_file_name ?? "uploaded-catalog.pdf",
+    source_file_name: body.source_file_name ?? "uploaded-invoice.pdf",
     item_count: 0,
     target_savings_percent: 10,
-    notes: body.notes ?? "Pending concierge review.",
+    notes: body.notes ?? "Pending invoice analysis.",
   })
 
   res.status(202).json({

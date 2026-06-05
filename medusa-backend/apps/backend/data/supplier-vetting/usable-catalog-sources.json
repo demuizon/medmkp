@@ -1,0 +1,54 @@
+[
+  {
+    "supplier_id": "msup_benco_com",
+    "supplier_name": "Benco Dental",
+    "slug": "benco-com",
+    "website_url": "https://benco.com",
+    "source_catalog": "benco-com-website",
+    "source_type": "website",
+    "source_url": "https://benco.com",
+    "classification": "catalog_candidate",
+    "confidence_score": 94,
+    "source_company_name": "ASPEN DENTAL MANAGEMENT, INC.",
+    "notes": "Known dental catalog/distributor domain: benco.com | Lab signal: lab"
+  },
+  {
+    "supplier_id": "msup_henryschein_com",
+    "supplier_name": "Henry Schein",
+    "slug": "henryschein-com",
+    "website_url": "https://henryschein.com",
+    "source_catalog": "henryschein-com-website",
+    "source_type": "website",
+    "source_url": "https://henryschein.com",
+    "classification": "catalog_candidate",
+    "confidence_score": 94,
+    "source_company_name": "EJ DENTAL LAB",
+    "notes": "Known dental catalog/distributor domain: henryschein.com | Lab signal: lab"
+  },
+  {
+    "supplier_id": "msup_pattersondental_com",
+    "supplier_name": "Patterson Dental",
+    "slug": "pattersondental-com",
+    "website_url": "https://pattersondental.com",
+    "source_catalog": "pattersondental-com-website",
+    "source_type": "website",
+    "source_url": "https://pattersondental.com",
+    "classification": "catalog_candidate",
+    "confidence_score": 94,
+    "source_company_name": "LLOYD DENTAL STUDIO, LLC",
+    "notes": "Known dental catalog/distributor domain: pattersondental.com | Lab signal: lab | Clinic/practice signal: dental studio"
+  },
+  {
+    "supplier_id": "msup_directdenturedepot_com",
+    "supplier_name": "Direct Denture Depot",
+    "slug": "directdenturedepot-com",
+    "website_url": "https://directdenturedepot.com",
+    "source_catalog": "directdenturedepot-com-website",
+    "source_type": "website",
+    "source_url": "https://directdenturedepot.com",
+    "classification": "catalog_candidate",
+    "confidence_score": 80,
+    "source_company_name": "DISTINCTIVE DENTAL STUDIO, LTD.",
+    "notes": "Catalog signal: direct, depot | Domain catalog signal: direct, depot | Lab signal: denture | Clinic/practice signal: dental studio"
+  }
+]

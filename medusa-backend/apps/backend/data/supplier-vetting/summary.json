@@ -1,0 +1,17 @@
+{
+  "input": "/Users/patrice/code/medmkp/research/Med Supply URLs (Merged) - dental urls.csv",
+  "output_dir": "/Users/patrice/code/medmkp/medusa-backend/apps/backend/data/supplier-vetting",
+  "total_rows": 39745,
+  "unique_leads": 34861,
+  "classification_counts": {
+    "directory_or_placeholder": 83,
+    "needs_review": 2257,
+    "dental_lab": 1229,
+    "clinic_or_practice": 270,
+    "possible_supplier": 36,
+    "catalog_candidate": 4,
+    "missing_url": 30982
+  },
+  "top_candidate_count": 40,
+  "usable_catalog_source_count": 4
+}
