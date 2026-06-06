@@ -10,6 +10,8 @@ export const medmkpSuppliers = [
     certification_summary: "PT, rehab, and clinical therapy supplies distributor",
     default_lead_time_days: 4,
     ach_enabled: true,
+    catalog_source_urls: "[]",
+    catalog_source_notes: "",
   },
   {
     id: "msup_therapy_direct",
@@ -22,6 +24,8 @@ export const medmkpSuppliers = [
     certification_summary: "Rehab consumables and durable therapy equipment",
     default_lead_time_days: 6,
     ach_enabled: false,
+    catalog_source_urls: "[]",
+    catalog_source_notes: "",
   },
 ]
 

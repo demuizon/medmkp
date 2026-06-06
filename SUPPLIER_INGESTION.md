@@ -95,10 +95,16 @@ npm run supplier:ingest:db -- \
 
 Persistent source URL:
 
-1. Add a `medmkp_supplier_catalog_source` row for the supplier.
-2. Set `source_type = website`.
-3. Set `source_url` to the category/search/catalog URL.
+1. Update `medmkp_supplier.catalog_source_urls` for the supplier.
+2. Store a JSON array of category/search/catalog URLs.
+3. Optionally describe the source strategy in `catalog_source_notes`.
 4. Run the normal DB-backed ingestion command.
+
+Example value:
+
+```json
+["https://www.net32.com/supplies/gloves"]
+```
 
 The pipeline will fetch those source URLs during the index stage, extract
 same-origin links, classify product candidates, and then run the normal product
@@ -154,6 +160,7 @@ Required fields:
 - `slug`
 - `website_url`
 - `onboarding_status`
+- `catalog_source_urls`
 
 2. Dry-run ingestion:
 

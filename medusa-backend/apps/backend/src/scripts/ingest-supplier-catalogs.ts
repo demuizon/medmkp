@@ -146,6 +146,29 @@ function validUrl(value: string | undefined) {
   }
 }
 
+function parseSupplierSourceUrls(value: string | undefined) {
+  const trimmed = value?.trim()
+
+  if (!trimmed) {
+    return []
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed)
+
+    if (Array.isArray(parsed)) {
+      return parsed.filter((url): url is string => typeof url === "string")
+    }
+  } catch {
+    // Fall through to line/comma parsing for hand-edited values.
+  }
+
+  return trimmed
+    .split(/[\n,]/)
+    .map((url) => url.trim())
+    .filter(Boolean)
+}
+
 function sourceUrlRecord(input: {
   supplierName: string
   supplierWebsiteUrl: string
@@ -248,10 +271,7 @@ export default async function ingestSupplierCatalogs({
 }) {
   const options = parseOptions()
   const medmkp = container.resolve<MedMKPModuleService>(MEDMKP_MODULE)
-  const [dbSuppliers, catalogSources] = await Promise.all([
-    medmkp.listSuppliers(),
-    medmkp.listSupplierCatalogSources(),
-  ])
+  const dbSuppliers = await medmkp.listSuppliers()
   const suppliers = dbSuppliers
     .filter((supplier) => !options.supplierId || supplier.id === options.supplierId)
     .map((supplier): SupplierSeedRow => ({
@@ -265,16 +285,13 @@ export default async function ingestSupplierCatalogs({
       : supplier.name === (options.supplierName ?? suppliers[0]?.distributor)
   )
   const dbSourceUrls = matchedSupplier
-    ? catalogSources
-        .filter((source) => source.supplier_id === matchedSupplier.id)
-        .filter((source) => source.status === "active")
-        .filter((source) => source.source_type === "website" || source.source_type === "agent")
-        .filter((source) => validUrl(source.source_url))
-        .map((source) => sourceUrlRecord({
+    ? parseSupplierSourceUrls(matchedSupplier.catalog_source_urls)
+        .filter(validUrl)
+        .map((sourceUrl) => sourceUrlRecord({
           supplierName: matchedSupplier.name,
           supplierWebsiteUrl: matchedSupplier.website_url,
-          sourceCatalog: source.source_catalog,
-          sourceUrl: source.source_url,
+          sourceCatalog: sourceCatalogForSupplier(matchedSupplier),
+          sourceUrl,
         }))
     : []
   const cliSourceUrls = matchedSupplier

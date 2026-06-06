@@ -61,6 +61,8 @@ export default async function seedUsableDentalSuppliers({
         certification_summary: `Usable dental supplier lead from research CSV. ${candidate.notes}`,
         default_lead_time_days: 0,
         ach_enabled: false,
+        catalog_source_urls: JSON.stringify([candidate.source_url]),
+        catalog_source_notes: `Seeded from vetted supplier CSV. Source company row: ${candidate.source_company_name}. ${candidate.notes}`,
       }))
     )
 

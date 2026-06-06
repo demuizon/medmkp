@@ -11,6 +11,8 @@ const Supplier = model.define("medmkp_supplier", {
   certification_summary: model.text(),
   default_lead_time_days: model.number(),
   ach_enabled: model.boolean(),
+  catalog_source_urls: model.text(),
+  catalog_source_notes: model.text(),
 })
 
 export default Supplier
