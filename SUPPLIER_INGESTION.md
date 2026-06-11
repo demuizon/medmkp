@@ -249,3 +249,37 @@ It extracts SKU-level rows from Pearson item tables, including:
 
 Pearson `product_thumb_multi.asp` pages are treated as family/category pages, not
 SKU-level product pages.
+
+Sky Dental Supply (skydentalsupply.com) has a supplier-specific adapter.
+
+- Single `sitemap.xml` with ~7,600 `.htm` product URLs; standard sitemap
+  discovery works.
+- Product pages serve full schema.org Product JSON-LD (name, sku, mpn, brand,
+  price, availability).
+- Category/subcategory/product line come from BreadcrumbList markup; image
+  URLs are stored in `raw.image_urls`.
+- Discontinued products return HTTP 410 and are logged as failures.
+
+Shasta Dental Supply (shastadentalsupply.com) has a supplier-specific adapter
+plus a full-catalog discovery module (`shasta-catalog-discovery.ts`).
+
+- No sitemap: `sitemap.xml` 404s and robots.txt has no `Sitemap:` directive,
+  so discovery crawls `index.aspx -> show_Categories.aspx -> show_Subs.aspx ->
+  show_Products.aspx` (family pages) and emits SKU-level
+  `show_Product.aspx?ID=` URLs. Cap the crawl with
+  `--max-shasta-catalog-pages` (default 5000).
+- SKU pages expose Item Number (supplier SKU), Manufacturer, Mfg. Number,
+  price with a basis suffix (`ea`/`bx`/`cs`/`pk`), availability, breadcrumb
+  taxonomy, and pack size (`Components`).
+- Clearance items strike the list price and show a `Sale Price:` line; the
+  adapter extracts the sale price and keeps the list price in
+  `raw.list_price`.
+
+Frontier Dental (frontierdental.com) is currently not ingestible.
+
+- Cloudflare bot management returns 403 for all non-interactive clients,
+  including `robots.txt`-allowed paths and `sitemap.xml`, for both plain
+  HTTP fetches and headless browsers.
+- Do not attempt to bypass the block. Options: request a catalog feed or
+  dealer API access from the supplier, or use a manually exported CSV via
+  `supplier:import-csv`.
