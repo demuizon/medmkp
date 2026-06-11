@@ -17,6 +17,7 @@ type CliOptions = {
   maxSitemapsPerSupplier?: number
   maxDcDentalCatalogPages?: number
   maxPearsonCatalogPages?: number
+  maxShastaCatalogPages?: number
   debug: boolean
   debugOutputDir?: string
 }
@@ -84,6 +85,9 @@ function parseOptions(): CliOptions {
     maxPearsonCatalogPages: process.env.SUPPLIER_INGESTION_MAX_PEARSON_CATALOG_PAGES
       ? Number(process.env.SUPPLIER_INGESTION_MAX_PEARSON_CATALOG_PAGES)
       : undefined,
+    maxShastaCatalogPages: process.env.SUPPLIER_INGESTION_MAX_SHASTA_CATALOG_PAGES
+      ? Number(process.env.SUPPLIER_INGESTION_MAX_SHASTA_CATALOG_PAGES)
+      : undefined,
     debug: process.env.SUPPLIER_INGESTION_DEBUG === "1",
     debugOutputDir: process.env.SUPPLIER_INGESTION_DEBUG_DIR,
   }
@@ -142,6 +146,9 @@ function parseOptions(): CliOptions {
     if (arg.startsWith("--max-pearson-catalog-pages=")) {
       options.maxPearsonCatalogPages = Number(optionValue(arg))
     }
+    if (arg.startsWith("--max-shasta-catalog-pages=")) {
+      options.maxShastaCatalogPages = Number(optionValue(arg))
+    }
 
     if (arg.startsWith("--debug-output-dir=")) {
       options.debugOutputDir = optionValue(arg)
@@ -173,6 +180,7 @@ async function run() {
     maxSitemapsPerSupplier: options.maxSitemapsPerSupplier,
     maxDcDentalCatalogPages: options.maxDcDentalCatalogPages,
     maxPearsonCatalogPages: options.maxPearsonCatalogPages,
+    maxShastaCatalogPages: options.maxShastaCatalogPages,
   })
 
   console.log(JSON.stringify(result.summary, null, 2))

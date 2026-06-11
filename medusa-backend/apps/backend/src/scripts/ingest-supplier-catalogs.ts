@@ -23,6 +23,7 @@ type CliOptions = {
   maxSitemapsPerSupplier?: number
   maxDcDentalCatalogPages?: number
   maxPearsonCatalogPages?: number
+  maxShastaCatalogPages?: number
   debug: boolean
   commit: boolean
   allowEmptyCommit: boolean
@@ -66,6 +67,9 @@ function parseOptions(): CliOptions {
       : undefined,
     maxPearsonCatalogPages: process.env.SUPPLIER_INGESTION_MAX_PEARSON_CATALOG_PAGES
       ? Number(process.env.SUPPLIER_INGESTION_MAX_PEARSON_CATALOG_PAGES)
+      : undefined,
+    maxShastaCatalogPages: process.env.SUPPLIER_INGESTION_MAX_SHASTA_CATALOG_PAGES
+      ? Number(process.env.SUPPLIER_INGESTION_MAX_SHASTA_CATALOG_PAGES)
       : undefined,
     debug: process.env.SUPPLIER_INGESTION_DEBUG === "1",
     commit: process.env.SUPPLIER_INGESTION_COMMIT === "1",
@@ -117,6 +121,9 @@ function parseOptions(): CliOptions {
     }
     if (arg.startsWith("--max-pearson-catalog-pages=")) {
       options.maxPearsonCatalogPages = Number(optionValue(arg))
+    }
+    if (arg.startsWith("--max-shasta-catalog-pages=")) {
+      options.maxShastaCatalogPages = Number(optionValue(arg))
     }
   }
 
@@ -392,6 +399,7 @@ export default async function ingestSupplierCatalogs({
     maxSitemapsPerSupplier: options.maxSitemapsPerSupplier,
     maxDcDentalCatalogPages: options.maxDcDentalCatalogPages,
     maxPearsonCatalogPages: options.maxPearsonCatalogPages,
+    maxShastaCatalogPages: options.maxShastaCatalogPages,
     debug: options.debug,
   })
   let importResult:

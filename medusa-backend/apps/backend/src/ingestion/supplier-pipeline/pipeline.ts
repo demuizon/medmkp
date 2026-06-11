@@ -3,6 +3,7 @@ import { discoverSupplierSitemaps } from "./sitemap-discovery"
 import { discoverSupplierSourceUrls } from "./source-url-discovery"
 import { discoverDcDentalCatalogUrls } from "./dcdental-catalog-discovery"
 import { discoverPearsonCatalogUrls } from "./pearson-catalog-discovery"
+import { discoverShastaCatalogUrls } from "./shasta-catalog-discovery"
 import { extractProductPages } from "./product-extraction"
 import { filterSuppliers, supplierRowsFromCsv } from "./suppliers"
 import { indexSupplierSitemapUrls, summarizeIndexedUrls } from "./url-index"
@@ -33,6 +34,7 @@ export type SupplierIngestionPipelineOptions = {
   maxSitemapsPerSupplier?: number
   maxDcDentalCatalogPages?: number
   maxPearsonCatalogPages?: number
+  maxShastaCatalogPages?: number
   debug?: boolean
   debugOutputDir?: string
 }
@@ -165,6 +167,19 @@ export async function runSupplierIngestionPipeline(
         `Index stage Pearson full-catalog discovery: ${pearsonCatalogUrls.length} product URL(s)`
       )
       indexedUrls.push(...pearsonCatalogUrls)
+    }
+    const shastaCatalogUrls = await discoverShastaCatalogUrls(suppliers, {
+      timeoutMs: options.timeoutMs,
+      debug: options.debug,
+      concurrency: options.sourceConcurrency,
+      maxPages: options.maxShastaCatalogPages,
+    })
+    if (shastaCatalogUrls.length) {
+      log(
+        options.debug,
+        `Index stage Shasta full-catalog discovery: ${shastaCatalogUrls.length} product URL(s)`
+      )
+      indexedUrls.push(...shastaCatalogUrls)
     }
     const dcDentalCatalogUrls = await discoverDcDentalCatalogUrls(suppliers, indexedUrls, {
       timeoutMs: options.timeoutMs,
