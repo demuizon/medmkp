@@ -5,11 +5,20 @@ paused, retried, and backfilled independently. Schedules are staggered
 across Sunday morning; assign a small Airflow pool via
 medmkp_supplier_ingest_pool to cap how many ingests run concurrently.
 
+Each DAG runs the ingestion as separate stage tasks
+(discover >> index >> extract >> commit >> cleanup_state) so the UI shows
+which stage is running. Stages share intermediate state through JSON files
+in a per-run state directory; a failed stage can be retried without
+re-running earlier stages, and cleanup_state removes the directory once
+the run succeeds (it is kept on failure for debugging).
+
 Expected Airflow Variables:
 - medmkp_backend_dir: absolute path to medusa-backend/apps/backend
 - medmkp_env_file: optional env file to source before running npm, defaults to .env
 - medmkp_supplier_ingest_pool: optional Airflow pool, defaults to default_pool
 - medmkp_supplier_ingest_commit: set to "false" for dry-run tasks, defaults to true
+- medmkp_supplier_ingest_state_root: directory for inter-stage state files,
+  defaults to <backend dir>/.medmkp/ingestion/airflow
 """
 
 from __future__ import annotations
@@ -24,6 +33,13 @@ BACKEND_DIR = Variable.get("medmkp_backend_dir", default_var="/opt/medmkp/medusa
 ENV_FILE = Variable.get("medmkp_env_file", default_var=".env")
 POOL = Variable.get("medmkp_supplier_ingest_pool", default_var="default_pool")
 COMMIT_ENABLED = Variable.get("medmkp_supplier_ingest_commit", default_var="true").lower() == "true"
+STATE_ROOT = Variable.get(
+    "medmkp_supplier_ingest_state_root",
+    default_var=f"{BACKEND_DIR}/.medmkp/ingestion/airflow",
+)
+
+STAGES = ["discover", "index", "extract", "commit"]
+STATE_DIR_TEMPLATE = STATE_ROOT + "/{{ dag.dag_id }}/{{ ts_nodash }}"
 
 SUPPLIERS = [
     {
@@ -85,9 +101,13 @@ SUPPLIERS = [
 ]
 
 
-def supplier_command(supplier: dict[str, object]) -> str:
-    args = [f"--supplier-id={supplier['supplier_id']}"]
-    if COMMIT_ENABLED:
+def supplier_command(supplier: dict[str, object], stage: str) -> str:
+    args = [
+        f"--supplier-id={supplier['supplier_id']}",
+        f"--stages={stage}",
+        f"--state-dir={STATE_DIR_TEMPLATE}",
+    ]
+    if stage == "commit" and COMMIT_ENABLED:
         args.append("--commit")
     args.extend(supplier["args"])
     arg_string = " ".join(args)
@@ -116,12 +136,23 @@ def build_supplier_dag(supplier: dict[str, object]) -> DAG:
         max_active_runs=1,
         tags=["medmkp", "supplier-ingestion", supplier["supplier_id"]],
     ) as dag:
-        BashOperator(
-            task_id=f"ingest_{supplier['name']}",
-            bash_command=supplier_command(supplier),
-            pool=POOL,
-            retries=1,
+        previous = None
+        for stage in STAGES:
+            task = BashOperator(
+                task_id=stage,
+                bash_command=supplier_command(supplier, stage),
+                pool=POOL,
+                retries=1,
+            )
+            if previous is not None:
+                previous >> task
+            previous = task
+
+        cleanup = BashOperator(
+            task_id="cleanup_state",
+            bash_command=f'rm -rf "{STATE_DIR_TEMPLATE}"',
         )
+        previous >> cleanup
     return dag
 
 

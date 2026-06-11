@@ -24,6 +24,8 @@ export type SupplierIngestionPipelineOptions = {
   suppliers?: SupplierSeedRow[]
   supplierName?: string
   stages?: SupplierIngestionStage[]
+  initialSitemaps?: SupplierSitemapSummary[]
+  initialIndexedUrls?: IndexedSupplierUrl[]
   productLimit?: number
   timeoutMs?: number
   sitemapConcurrency?: number
@@ -111,9 +113,9 @@ export async function runSupplierIngestionPipeline(
     )
   }
 
-  let sitemaps: SupplierSitemapSummary[] = []
+  let sitemaps: SupplierSitemapSummary[] = options.initialSitemaps ?? []
   let sourceUrlSummaries: SupplierSourceUrlSummary[] = []
-  let indexedUrls: IndexedSupplierUrl[] = []
+  let indexedUrls: IndexedSupplierUrl[] = options.initialIndexedUrls ?? []
   let extracted = {
     products: [],
     failures: [],

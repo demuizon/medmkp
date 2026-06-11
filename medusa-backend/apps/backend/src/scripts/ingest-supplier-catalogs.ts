@@ -1,3 +1,5 @@
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs"
+import { join } from "path"
 import type { MedusaContainer } from "@medusajs/framework"
 import { buildSupplierCatalogIngestion } from "../ingestion/supplier-catalog"
 import type {
@@ -5,14 +7,26 @@ import type {
   SupplierCatalogRow,
 } from "../ingestion/supplier-catalog"
 import { runSupplierIngestionPipeline } from "../ingestion/supplier-pipeline/pipeline"
+import type { SupplierIngestionStage } from "../ingestion/supplier-pipeline/pipeline"
 import { normalizeSiteUrl } from "../ingestion/supplier-pipeline/suppliers"
-import type { SupplierSeedRow, SupplierSourceUrl } from "../ingestion/supplier-pipeline/types"
+import type {
+  IndexedSupplierUrl,
+  SupplierSeedRow,
+  SupplierSitemapSummary,
+  SupplierSourceUrl,
+} from "../ingestion/supplier-pipeline/types"
 import { MEDMKP_MODULE } from "../modules/medmkp"
 import type MedMKPModuleService from "../modules/medmkp/service"
+
+const CLI_STAGES = ["discover", "index", "extract", "commit"] as const
+
+type CliStage = (typeof CLI_STAGES)[number]
 
 type CliOptions = {
   supplierId?: string
   supplierName?: string
+  stages?: CliStage[]
+  stateDir?: string
   limit?: number
   timeoutMs?: number
   sitemapConcurrency?: number
@@ -34,10 +48,33 @@ function optionValue(arg: string) {
   return parts.join("=")
 }
 
+function parseStages(value: string | undefined) {
+  if (!value?.trim()) {
+    return undefined
+  }
+
+  const stages = value
+    .split(",")
+    .map((stage) => stage.trim())
+    .filter(Boolean)
+
+  stages.forEach((stage) => {
+    if (!CLI_STAGES.includes(stage as CliStage)) {
+      throw new Error(
+        `Unknown ingestion stage "${stage}". Expected one of: ${CLI_STAGES.join(", ")}`
+      )
+    }
+  })
+
+  return stages as CliStage[]
+}
+
 function parseOptions(): CliOptions {
   const options: CliOptions = {
     supplierId: process.env.SUPPLIER_ID,
     supplierName: process.env.SUPPLIER_NAME,
+    stages: parseStages(process.env.SUPPLIER_INGESTION_STAGES),
+    stateDir: process.env.SUPPLIER_INGESTION_STATE_DIR,
     limit: process.env.PRODUCT_PAGE_LIMIT
       ? Number(process.env.PRODUCT_PAGE_LIMIT)
       : undefined,
@@ -88,6 +125,12 @@ function parseOptions(): CliOptions {
     }
     if (arg.startsWith("--supplier-id=")) {
       options.supplierId = optionValue(arg)
+    }
+    if (arg.startsWith("--stages=")) {
+      options.stages = parseStages(optionValue(arg))
+    }
+    if (arg.startsWith("--state-dir=")) {
+      options.stateDir = optionValue(arg)
     }
     if (arg.startsWith("--supplier=")) {
       options.supplierName = optionValue(arg)
@@ -262,6 +305,23 @@ async function promiseChunks<T>(
   }
 }
 
+function loadStageState<T>(stateDir: string, name: string): T {
+  const path = join(stateDir, name)
+
+  if (!existsSync(path)) {
+    throw new Error(
+      `Missing ingestion state file ${path}. Run the earlier stage(s) with --state-dir=${stateDir} first.`
+    )
+  }
+
+  return JSON.parse(readFileSync(path, "utf8")) as T
+}
+
+function saveStageState(stateDir: string, name: string, value: unknown) {
+  mkdirSync(stateDir, { recursive: true })
+  writeFileSync(join(stateDir, name), JSON.stringify(value))
+}
+
 async function replaceSupplierCatalog(
   medmkp: MedMKPModuleService,
   input: SupplierCatalogIngestionInput
@@ -350,6 +410,27 @@ export default async function ingestSupplierCatalogs({
   container: MedusaContainer
 }) {
   const options = parseOptions()
+  const stages = options.stages ?? [...CLI_STAGES]
+  const pipelineStages = stages.filter(
+    (stage): stage is SupplierIngestionStage => stage !== "commit"
+  )
+  const stateDir = options.stateDir
+
+  if (options.stages && stages.length < CLI_STAGES.length && !stateDir) {
+    throw new Error(
+      "Running a subset of stages requires --state-dir so separate stage runs can share intermediate state"
+    )
+  }
+
+  const initialSitemaps =
+    stateDir && pipelineStages.includes("index") && !pipelineStages.includes("discover")
+      ? loadStageState<SupplierSitemapSummary[]>(stateDir, "sitemaps.json")
+      : undefined
+  const initialIndexedUrls =
+    stateDir && pipelineStages.includes("extract") && !pipelineStages.includes("index")
+      ? loadStageState<IndexedSupplierUrl[]>(stateDir, "indexed-urls.json")
+      : undefined
+
   const medmkp = container.resolve<MedMKPModuleService>(MEDMKP_MODULE)
   const dbSuppliers = await medmkp.listSuppliers()
   const suppliers = dbSuppliers
@@ -389,6 +470,9 @@ export default async function ingestSupplierCatalogs({
   const result = await runSupplierIngestionPipeline({
     suppliers,
     supplierName: options.supplierName,
+    stages: pipelineStages,
+    initialSitemaps,
+    initialIndexedUrls,
     productLimit: options.limit,
     timeoutMs: options.timeoutMs,
     sitemapConcurrency: options.sitemapConcurrency,
@@ -402,15 +486,32 @@ export default async function ingestSupplierCatalogs({
     maxShastaCatalogPages: options.maxShastaCatalogPages,
     debug: options.debug,
   })
+  if (stateDir) {
+    if (pipelineStages.includes("discover")) {
+      saveStageState(stateDir, "sitemaps.json", result.sitemaps)
+    }
+    if (pipelineStages.includes("index")) {
+      saveStageState(stateDir, "indexed-urls.json", result.indexedUrls)
+    }
+    if (pipelineStages.includes("extract")) {
+      saveStageState(stateDir, "products.json", result.products)
+    }
+  }
+
+  const products =
+    stateDir && stages.includes("commit") && !stages.includes("extract")
+      ? loadStageState<typeof result.products>(stateDir, "products.json")
+      : result.products
+  const commitRequested = options.commit && stages.includes("commit")
   let importResult:
     | Awaited<ReturnType<typeof replaceSupplierCatalog>>
     | undefined
 
-  if (options.commit) {
+  if (commitRequested) {
     if (!matchedSupplier) {
       throw new Error("Commit requires exactly one matched DB supplier")
     }
-    if (!result.products.length && !options.allowEmptyCommit) {
+    if (!products.length && !options.allowEmptyCommit) {
       throw new Error(
         "Commit aborted: ingestion extracted 0 products. Re-run without --commit to inspect debug output, or pass --allow-empty-commit if you intentionally want to clear this supplier/source catalog."
       )
@@ -421,7 +522,7 @@ export default async function ingestSupplierCatalogs({
       source_type: "website",
       source_url: matchedSupplier.website_url,
       source_catalog: sourceCatalogForSupplier(matchedSupplier),
-      rows: catalogRows(result.products),
+      rows: catalogRows(products),
     })
   }
 
@@ -429,7 +530,8 @@ export default async function ingestSupplierCatalogs({
     JSON.stringify(
       {
         source: "medmkp_supplier",
-        commit: options.commit,
+        commit: commitRequested,
+        state_dir: stateDir,
         allow_empty_commit: options.allowEmptyCommit,
         supplier_id: matchedSupplier?.id,
         source_urls: dbSourceUrls.length + cliSourceUrls.length + fallbackSourceUrls.length,
