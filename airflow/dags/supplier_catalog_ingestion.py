@@ -115,9 +115,9 @@ SUPPLIERS = [
         "supplier_id": "msup_dentalcity_com",
         "schedule": "0 8 * * 0",
         "args": [
-            "--max-sitemaps-per-supplier=3",
-            "--sitemap-concurrency=4",
-            "--product-concurrency=6",
+            "--max-sitemaps-per-supplier=5000",
+            "--sitemap-concurrency=8",
+            "--product-concurrency=12",
             "--timeout-ms=30000",
         ],
     },
