@@ -5,6 +5,7 @@ import { discoverDcDentalCatalogUrls } from "./dcdental-catalog-discovery"
 import { discoverPearsonCatalogUrls } from "./pearson-catalog-discovery"
 import { discoverShastaCatalogUrls } from "./shasta-catalog-discovery"
 import { extractProductPages } from "./product-extraction"
+import { extractShopifyCatalogProducts } from "./shopify-catalog-extraction"
 import { filterSuppliers, supplierRowsFromCsv } from "./suppliers"
 import { indexSupplierSitemapUrls, summarizeIndexedUrls } from "./url-index"
 import { writePipelineDebugOutput } from "./debug-output"
@@ -196,17 +197,31 @@ export async function runSupplierIngestionPipeline(
   }
 
   if (stages.includes("extract")) {
-    const candidates = productCandidates(indexedUrls)
+    const allCandidates = productCandidates(indexedUrls)
+    const candidates = options.productLimit
+      ? allCandidates.slice(0, options.productLimit)
+      : allCandidates
     log(
       `Beginning extract stage: ${candidates.length} product candidate(s) to process`,
       options.productLimit ? `(limit ${options.productLimit})` : ""
     )
-    extracted = await extractProductPages(candidates, {
-      limit: options.productLimit,
+    const catalogExtracted = await extractShopifyCatalogProducts(candidates, {
+      timeoutMs: options.timeoutMs,
+    })
+    if (catalogExtracted.remaining.length !== candidates.length) {
+      log(
+        `Extract stage Shopify catalog pre-pass: ${catalogExtracted.products.length} products from products.json, ${catalogExtracted.failures.length} rejected, ${catalogExtracted.remaining.length} candidate(s) falling back to page extraction`
+      )
+    }
+    const pageExtracted = await extractProductPages(catalogExtracted.remaining, {
       timeoutMs: options.timeoutMs,
       concurrency: options.productConcurrency,
       debug: options.debug,
     })
+    extracted = {
+      products: [...catalogExtracted.products, ...pageExtracted.products],
+      failures: [...catalogExtracted.failures, ...pageExtracted.failures],
+    }
     log(
       `Extract stage complete: ${extracted.products.length} products extracted, ${extracted.failures.length} failures`
     )

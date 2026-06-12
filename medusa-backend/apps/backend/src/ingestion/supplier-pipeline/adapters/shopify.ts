@@ -72,7 +72,7 @@ function price(value: unknown) {
   return (value / 100).toFixed(2)
 }
 
-function availability(value: boolean | undefined) {
+export function shopifyAvailability(value: boolean | undefined) {
   if (value === true) {
     return "in_stock" as const
   }
@@ -92,10 +92,7 @@ function canonicalProductUrl(candidate: ProductPageCandidate, product: ShopifyPr
   return new URL("/products/" + product.handle, candidate.origin).href
 }
 
-function variantName(product: ShopifyProduct, variant: ShopifyVariant) {
-  const productTitle = product.title ?? ""
-  const variantTitle = variant.public_title || variant.title || ""
-
+export function shopifyVariantName(productTitle: string, variantTitle: string) {
   if (!variantTitle || /^default title$/i.test(variantTitle)) {
     return productTitle
   }
@@ -103,7 +100,14 @@ function variantName(product: ShopifyProduct, variant: ShopifyVariant) {
   return productTitle + " - " + variantTitle
 }
 
-function packSize(value: string) {
+function variantName(product: ShopifyProduct, variant: ShopifyVariant) {
+  return shopifyVariantName(
+    product.title ?? "",
+    variant.public_title || variant.title || ""
+  )
+}
+
+export function shopifyPackSize(value: string) {
   return firstMatch(value, [
     /([0-9][0-9,]*\s*\/\s*(?:bag|box|case|pack|pkg|bottle|tube|syringe|unit|cartridge|pk|bx)s?)/i,
     /((?:bag|box|case|pack|pkg|bottle|tube|syringe|unit|cartridge|pk|bx)s?\s+of\s+[0-9][A-Za-z0-9/-]*)/i,
@@ -133,11 +137,11 @@ function extractProducts(candidate: ProductPageCandidate, html: string): Extract
       subcategory: candidate.subcategory || "",
       product_line: product?.type || product?.product_type || "",
       product_url: productUrl,
-      pack_size: packSize(name + " " + description),
+      pack_size: shopifyPackSize(name + " " + description),
       unit_of_measure: "",
       price: price(variant.price ?? product?.price),
       price_basis: "each",
-      availability: availability(variant.available ?? product?.available),
+      availability: shopifyAvailability(variant.available ?? product?.available),
       min_quantity: 1,
       raw: {
         extracted_by: "shopify",

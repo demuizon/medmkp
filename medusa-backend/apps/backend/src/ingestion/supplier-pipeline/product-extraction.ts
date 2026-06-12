@@ -23,6 +23,49 @@ function errorMessage(error: unknown) {
   return error.message
 }
 
+// The supplier storefronts throttle per IP (Cloudflare leaky bucket, no
+// Retry-After header), so backoff has to be shared across the whole worker
+// pool — per-request retries just keep the bucket drained.
+export class SharedRateLimiter {
+  private nextSlotAt = 0
+  private minIntervalMs = 0
+  private backoffMs = 0
+
+  constructor(
+    private readonly pacedIntervalMs = 250,
+    private readonly initialBackoffMs = 2_000,
+    private readonly maxBackoffMs = 60_000
+  ) {}
+
+  async acquire() {
+    while (true) {
+      const now = Date.now()
+
+      if (now >= this.nextSlotAt) {
+        this.nextSlotAt = now + this.minIntervalMs
+        return
+      }
+
+      await sleep(this.nextSlotAt - now)
+    }
+  }
+
+  reportRateLimited() {
+    this.minIntervalMs = this.pacedIntervalMs
+    this.backoffMs = this.backoffMs
+      ? Math.min(this.backoffMs * 2, this.maxBackoffMs)
+      : this.initialBackoffMs
+    this.nextSlotAt = Math.max(
+      this.nextSlotAt,
+      Date.now() + this.backoffMs + Math.floor(Math.random() * 500)
+    )
+  }
+
+  reportSuccess() {
+    this.backoffMs = 0
+  }
+}
+
 function decodeBasicHtml(value: string) {
   return value.replace(/&amp;/g, "&").replace(/&quot;/g, "\"")
 }
@@ -50,13 +93,19 @@ function dcDentalApiUrl(productUrl: string, html: string) {
   }
 }
 
-async function fetchDcDentalApiJson(productUrl: string, html: string, timeoutMs: number) {
+async function fetchDcDentalApiJson(
+  productUrl: string,
+  html: string,
+  timeoutMs: number,
+  limiter?: SharedRateLimiter
+) {
   const apiUrl = dcDentalApiUrl(productUrl, html)
 
   if (!apiUrl) {
     return ""
   }
 
+  await limiter?.acquire()
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
 
@@ -71,6 +120,9 @@ async function fetchDcDentalApiJson(productUrl: string, html: string, timeoutMs:
     })
 
     if (!response.ok) {
+      if (response.status === 429) {
+        limiter?.reportRateLimited()
+      }
       return ""
     }
 
@@ -105,7 +157,8 @@ function shopifyProductJsonUrl(productUrl: string) {
       return ""
     }
 
-    url.hostname = `www.${url.hostname.replace(/^www\./i, "")}`
+    // Keep the candidate's hostname: these stores live on the apex domain and
+    // forcing www. costs a 301 redirect on every request.
     url.pathname = url.pathname.replace(/\/$/i, "") + ".js"
     url.search = ""
     url.hash = ""
@@ -116,13 +169,18 @@ function shopifyProductJsonUrl(productUrl: string) {
   }
 }
 
-async function fetchShopifyProductJson(productUrl: string, timeoutMs: number) {
+async function fetchShopifyProductJson(
+  productUrl: string,
+  timeoutMs: number,
+  limiter?: SharedRateLimiter
+) {
   const jsonUrl = shopifyProductJsonUrl(productUrl)
 
   if (!jsonUrl) {
     return ""
   }
 
+  await limiter?.acquire()
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
 
@@ -137,6 +195,9 @@ async function fetchShopifyProductJson(productUrl: string, timeoutMs: number) {
     })
 
     if (!response.ok) {
+      if (response.status === 429) {
+        limiter?.reportRateLimited()
+      }
       return ""
     }
 
@@ -164,7 +225,12 @@ function appendShopifyProductJson(html: string, json: string) {
     "</script>"
 }
 
-export async function fetchProductHtml(url: string, timeoutMs = 12_000) {
+export async function fetchProductHtml(
+  url: string,
+  timeoutMs = 12_000,
+  limiter?: SharedRateLimiter
+) {
+  await limiter?.acquire()
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
 
@@ -177,10 +243,21 @@ export async function fetchProductHtml(url: string, timeoutMs = 12_000) {
         Accept: "text/html,application/xhtml+xml",
       },
     })
+
+    if (response.status === 429) {
+      limiter?.reportRateLimited()
+    } else if (response.ok) {
+      limiter?.reportSuccess()
+    }
+
     const contentType = response.headers.get("content-type") ?? ""
     const body = await response.text()
-    const dcDentalApiJson = await fetchDcDentalApiJson(url, body, timeoutMs)
-    const shopifyProductJson = await fetchShopifyProductJson(url, timeoutMs)
+    const dcDentalApiJson = response.ok
+      ? await fetchDcDentalApiJson(url, body, timeoutMs, limiter)
+      : ""
+    const shopifyProductJson = response.ok
+      ? await fetchShopifyProductJson(url, timeoutMs, limiter)
+      : ""
     const html = appendShopifyProductJson(
       appendDcDentalApiJson(body, dcDentalApiJson),
       shopifyProductJson
@@ -204,26 +281,49 @@ function sleep(ms: number) {
 async function fetchProductHtmlWithRetries(
   url: string,
   timeoutMs: number | undefined,
-  attempts = 3
+  limiter?: SharedRateLimiter,
+  attempts = 3,
+  rateLimitAttempts = 6
 ) {
   let lastResult: Awaited<ReturnType<typeof fetchProductHtml>> | undefined
   let lastError: unknown
+  let failedAttempts = 0
+  let rateLimitedAttempts = 0
 
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+  while (true) {
     try {
-      const result = await fetchProductHtml(url, timeoutMs)
+      const result = await fetchProductHtml(url, timeoutMs, limiter)
       lastResult = result
 
       if (result.ok) {
         return result
       }
+
+      if (result.status === "429") {
+        rateLimitedAttempts += 1
+
+        if (rateLimitedAttempts >= rateLimitAttempts) {
+          return result
+        }
+
+        // The next fetchProductHtml call waits out the shared backoff via
+        // limiter.acquire(), so no extra sleep here when a limiter is set.
+        if (!limiter) {
+          await sleep(1_000 * rateLimitedAttempts)
+        }
+        continue
+      }
     } catch (error) {
       lastError = error
     }
 
-    if (attempt < attempts) {
-      await sleep(500 * attempt)
+    failedAttempts += 1
+
+    if (failedAttempts >= attempts) {
+      break
     }
+
+    await sleep(500 * failedAttempts)
   }
 
   if (lastResult) {
@@ -233,7 +333,7 @@ async function fetchProductHtmlWithRetries(
   throw lastError
 }
 
-function failedExtraction(
+export function failedExtraction(
   candidate: ProductPageCandidate,
   status: string,
   error: string
@@ -249,7 +349,7 @@ function failedExtraction(
   }
 }
 
-function invalidProductReason(product: ProductExtractionResult["products"][number]) {
+export function invalidProductReason(product: ProductExtractionResult["products"][number]) {
   const name = product.name?.trim() ?? ""
   const description = product.description?.trim() ?? ""
   const hasIdentifier = Boolean(product.sku?.trim() || product.manufacturer_sku?.trim())
@@ -327,6 +427,7 @@ export async function extractProductPages(
   )
 
   const startedAt = Date.now()
+  const limiter = new SharedRateLimiter()
   let completed = 0
   let extractedCount = 0
   let failureCount = 0
@@ -359,7 +460,7 @@ export async function extractProductPages(
       debugLog(options.debug, `Processing candidate ${position}: ${candidate.url}`)
 
       try {
-        const result = await fetchProductHtmlWithRetries(candidate.url, options.timeoutMs)
+        const result = await fetchProductHtmlWithRetries(candidate.url, options.timeoutMs, limiter)
         debugLog(
           options.debug,
           `Fetched ${candidate.url}: ok=${result.ok} status=${result.status} htmlLength=${result.html.length}`
@@ -423,6 +524,21 @@ export async function extractProductPages(
   infoLog(
     `Finished extract stage: ${products.length} products, ${failures.length} failures`
   )
+
+  if (failures.length) {
+    const counts = new Map<string, number>()
+
+    for (const failure of failures) {
+      const key = `status=${failure.status} ${failure.error}`.slice(0, 120)
+      counts.set(key, (counts.get(key) ?? 0) + 1)
+    }
+
+    const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
+    infoLog(
+      "Top failure reasons:",
+      top.map(([key, count]) => `${count}x [${key}]`).join(" | ")
+    )
+  }
 
   return {
     products,

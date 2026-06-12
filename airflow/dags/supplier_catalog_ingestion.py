@@ -64,7 +64,9 @@ SUPPLIERS = [
         "args": [
             "--max-sitemaps-per-supplier=3",
             "--sitemap-concurrency=4",
-            "--product-concurrency=12",
+            # Shopify storefront throttles per IP; per-page extraction is only
+            # the fallback behind products.json, keep it gentle.
+            "--product-concurrency=6",
             "--timeout-ms=30000",
         ],
     },
@@ -75,7 +77,9 @@ SUPPLIERS = [
         "args": [
             "--max-sitemaps-per-supplier=10",
             "--sitemap-concurrency=4",
-            "--product-concurrency=12",
+            # Shopify storefront throttles per IP; per-page extraction is only
+            # the fallback behind products.json, keep it gentle.
+            "--product-concurrency=6",
             "--timeout-ms=30000",
         ],
     },

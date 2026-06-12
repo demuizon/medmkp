@@ -495,6 +495,7 @@ export default async function ingestSupplierCatalogs({
     }
     if (pipelineStages.includes("extract")) {
       saveStageState(stateDir, "products.json", result.products)
+      saveStageState(stateDir, "failures.json", result.failures)
     }
   }
 
