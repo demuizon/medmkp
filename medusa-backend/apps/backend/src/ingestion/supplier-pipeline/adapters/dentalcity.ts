@@ -1,4 +1,4 @@
-import { firstMatch, stripTags } from "../html"
+import { firstMatch, productImageUrls, stripTags, uniqueImageUrls } from "../html"
 import type {
   ExtractedProductRow,
   ProductPageCandidate,
@@ -100,6 +100,16 @@ function packSize(value: string) {
   ])
 }
 
+function rowImageUrls(block: string, candidate: ProductPageCandidate, html: string) {
+  return uniqueImageUrls(
+    [
+      metaItemProp(block, "image"),
+      ...productImageUrls(html, candidate.url),
+    ],
+    candidate.url
+  )
+}
+
 function dentalCityRows(
   candidate: ProductPageCandidate,
   html: string
@@ -118,6 +128,7 @@ function dentalCityRows(
     const url = metaItemProp(block, "url")
     const mpn = metaItemProp(block, "mpn")
     const { category: categoryName, subcategory } = categoryParts(category)
+    const imageUrls = rowImageUrls(block, candidate, html)
 
     if (!name || !sku || !price) {
       return []
@@ -133,6 +144,7 @@ function dentalCityRows(
       subcategory,
       product_line: line,
       product_url: skuVariantUrl(url, candidate.url),
+      image_url: imageUrls[0] ?? "",
       pack_size: packSize(`${name} ${description}`),
       unit_of_measure: "",
       price,
@@ -146,6 +158,7 @@ function dentalCityRows(
         sitemap_url: candidate.sitemap_url,
         confidence_score: candidate.confidence_score,
         reasons: candidate.reasons,
+        image_urls: imageUrls,
       },
     }]
   })
@@ -167,6 +180,7 @@ export const dentalCityAdapter: SupplierProductAdapter = {
       /<span[^>]+class=["'][^"']*desktopproductname[^"']*["'][^>]*>([\s\S]*?)<\/span>/i,
       /<title[^>]*>([\s\S]*?)<\/title>/i,
     ])
+    const imageUrls = productImageUrls(html, candidate.url)
 
     return {
       sku: productIdFromUrl(candidate.url),
@@ -174,9 +188,11 @@ export const dentalCityAdapter: SupplierProductAdapter = {
       description: stripTags(name),
       category: "Dental supplies",
       product_url: candidate.url,
+      image_url: imageUrls[0] ?? "",
       raw: {
         extracted_by: "dentalcity",
         source_page_url: candidate.url,
+        image_urls: imageUrls,
       },
     }
   },

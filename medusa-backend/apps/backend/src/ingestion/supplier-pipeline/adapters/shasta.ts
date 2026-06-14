@@ -119,6 +119,9 @@ function extractProduct(
   const { price, basis } = priceParts(html)
   const crumbs = breadcrumbParts(html)
   const productId = productIdFromUrl(candidate.url)
+  const imageUrls = productId
+    ? [`${candidate.origin}/img_Large.asp?id=${productId}`]
+    : []
   const components = labelledValue(html, "Components")
   const listPrice = firstMatch(html, [
     /<strong>\s*Price:?\s*<\/strong>\s*<s>\s*\$\s*([0-9][0-9,]*(?:\.[0-9]{2})?)/i,
@@ -134,6 +137,7 @@ function extractProduct(
     subcategory: crumbs[1] || "",
     product_line: crumbs[2] || "",
     product_url: candidate.url,
+    image_url: imageUrls[0] ?? "",
     pack_size: components,
     unit_of_measure: "",
     price: price || hiddenInput(html, "Product_Price"),
@@ -144,9 +148,7 @@ function extractProduct(
       extracted_by: "shasta",
       product_id: productId,
       list_price: listPrice,
-      image_urls: productId
-        ? [`${candidate.origin}/img_Large.asp?id=${productId}`]
-        : [],
+      image_urls: imageUrls,
       source_page_url: candidate.url,
       sitemap_url: candidate.sitemap_url,
       confidence_score: candidate.confidence_score,

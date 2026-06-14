@@ -10,10 +10,16 @@ type ShopifyVariant = {
   title?: string
   sku?: string
   available?: boolean
+  featured_image?: ShopifyImage | string | null
   name?: string
   public_title?: string | null
   price?: number
   compare_at_price?: number | null
+}
+
+type ShopifyImage = {
+  src?: string
+  url?: string
 }
 
 type ShopifyProduct = {
@@ -27,6 +33,9 @@ type ShopifyProduct = {
   tags?: string[]
   price?: number
   available?: boolean
+  image?: ShopifyImage | string | null
+  images?: Array<ShopifyImage | string>
+  featured_image?: ShopifyImage | string | null
   variants?: ShopifyVariant[]
 }
 
@@ -70,6 +79,40 @@ function price(value: unknown) {
   }
 
   return (value / 100).toFixed(2)
+}
+
+function imageSource(value: ShopifyImage | string | null | undefined) {
+  if (typeof value === "string") {
+    return value
+  }
+
+  return value?.src || value?.url || ""
+}
+
+function imageUrls(
+  candidate: ProductPageCandidate,
+  product: ShopifyProduct | undefined,
+  variant: ShopifyVariant
+) {
+  return [
+    ...new Set(
+      [
+        imageSource(variant.featured_image),
+        imageSource(product?.featured_image),
+        imageSource(product?.image),
+        ...(product?.images ?? []).map(imageSource),
+      ]
+        .filter(Boolean)
+        .map((url) => {
+          try {
+            return new URL(url, candidate.origin).href
+          } catch {
+            return ""
+          }
+        })
+        .filter(Boolean)
+    ),
+  ]
 }
 
 export function shopifyAvailability(value: boolean | undefined) {
@@ -126,6 +169,7 @@ function extractProducts(candidate: ProductPageCandidate, html: string): Extract
     const sku = variant.sku || firstMatch(html, [
       /<meta[^>]+property=["']product:retailer_item_id["'][^>]+content=["']([^"']+)["']/i,
     ])
+    const images = imageUrls(candidate, product, variant)
 
     return {
       sku,
@@ -139,6 +183,7 @@ function extractProducts(candidate: ProductPageCandidate, html: string): Extract
       product_url: productUrl,
       pack_size: shopifyPackSize(name + " " + description),
       unit_of_measure: "",
+      image_url: images[0] ?? "",
       price: price(variant.price ?? product?.price),
       price_basis: "each",
       availability: shopifyAvailability(variant.available ?? product?.available),
@@ -152,6 +197,7 @@ function extractProducts(candidate: ProductPageCandidate, html: string): Extract
         sitemap_url: candidate.sitemap_url,
         confidence_score: candidate.confidence_score,
         reasons: candidate.reasons,
+        image_urls: images,
       },
     }
   })

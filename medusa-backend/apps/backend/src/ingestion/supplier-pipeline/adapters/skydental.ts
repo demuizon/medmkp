@@ -1,6 +1,7 @@
 import {
   firstMatch,
   nestedString,
+  productImageUrls,
   productJsonLd,
   stringValue,
   stripTags,
@@ -64,17 +65,6 @@ function availability(product: Record<string, unknown> | undefined) {
   return "unknown" as const
 }
 
-function imageUrls(product: Record<string, unknown> | undefined) {
-  const image = product?.image
-
-  if (Array.isArray(image)) {
-    return image.map(stringValue).filter(Boolean)
-  }
-
-  const single = stringValue(image)
-  return single ? [single] : []
-}
-
 function packSize(value: string) {
   return firstMatch(value, [
     /([0-9][0-9,]*\s*\/\s*(?:bag|box|case|pack|pkg|bottle|tube|syringe|unit|cartridge|pk|bx)s?)/i,
@@ -92,6 +82,7 @@ function extractProduct(
   const mpn = nestedString(product, ["mpn"])
   const description = nestedString(product, ["description"])
   const { category, subcategory, product_line } = categoryParts(html)
+  const images = productImageUrls(html, candidate.url, product)
 
   return {
     sku,
@@ -103,6 +94,7 @@ function extractProduct(
     subcategory,
     product_line,
     product_url: stringValue(offerRecord(product)?.url) || candidate.url,
+    image_url: images[0] ?? "",
     pack_size: packSize(`${name} ${description}`),
     unit_of_measure: "",
     price: stringValue(offerRecord(product)?.price),
@@ -111,7 +103,7 @@ function extractProduct(
     min_quantity: 1,
     raw: {
       extracted_by: "skydental",
-      image_urls: imageUrls(product),
+      image_urls: images,
       source_page_url: candidate.url,
       sitemap_url: candidate.sitemap_url,
       confidence_score: candidate.confidence_score,

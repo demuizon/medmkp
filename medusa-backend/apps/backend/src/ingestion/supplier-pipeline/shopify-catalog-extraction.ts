@@ -25,6 +25,11 @@ type ShopifyCatalogVariant = {
   sku?: string
   price?: string | number
   available?: boolean
+  featured_image?: ShopifyCatalogImage | string | null
+}
+
+type ShopifyCatalogImage = {
+  src?: string
 }
 
 type ShopifyCatalogProduct = {
@@ -34,6 +39,9 @@ type ShopifyCatalogProduct = {
   body_html?: string
   vendor?: string
   product_type?: string
+  image?: ShopifyCatalogImage | string | null
+  images?: Array<ShopifyCatalogImage | string>
+  featured_image?: ShopifyCatalogImage | string | null
   variants?: ShopifyCatalogVariant[]
 }
 
@@ -141,6 +149,40 @@ function priceString(value: string | number | undefined) {
   return ""
 }
 
+function imageSource(value: ShopifyCatalogImage | string | null | undefined) {
+  if (typeof value === "string") {
+    return value
+  }
+
+  return value?.src || ""
+}
+
+function catalogImageUrls(
+  product: ShopifyCatalogProduct,
+  variant: ShopifyCatalogVariant,
+  origin: string
+) {
+  return [
+    ...new Set(
+      [
+        imageSource(variant.featured_image),
+        imageSource(product.featured_image),
+        imageSource(product.image),
+        ...(product.images ?? []).map(imageSource),
+      ]
+        .filter(Boolean)
+        .map((url) => {
+          try {
+            return new URL(url, origin).href
+          } catch {
+            return ""
+          }
+        })
+        .filter(Boolean)
+    ),
+  ]
+}
+
 function catalogRows(
   candidate: ProductPageCandidate,
   product: ShopifyCatalogProduct,
@@ -154,6 +196,7 @@ function catalogRows(
 
   return variants.map((variant, index): ExtractedProductRow => {
     const name = shopifyVariantName(product.title ?? "", variant.title ?? "")
+    const imageUrls = catalogImageUrls(product, variant, origin)
 
     return {
       sku: variant.sku || "",
@@ -165,6 +208,7 @@ function catalogRows(
       subcategory: candidate.subcategory || "",
       product_line: product.product_type || "",
       product_url: productUrl,
+      image_url: imageUrls[0] ?? "",
       pack_size: shopifyPackSize(name + " " + description),
       unit_of_measure: "",
       price: priceString(variant.price),
@@ -180,6 +224,7 @@ function catalogRows(
         sitemap_url: candidate.sitemap_url,
         confidence_score: candidate.confidence_score,
         reasons: candidate.reasons,
+        image_urls: imageUrls,
       },
     }
   })

@@ -96,6 +96,80 @@ export function stringValue(value: unknown) {
   return ""
 }
 
+function absoluteUrl(value: string, baseUrl: string) {
+  if (!value.trim()) {
+    return ""
+  }
+
+  try {
+    return new URL(value, baseUrl).href
+  } catch {
+    return ""
+  }
+}
+
+function imageValueUrls(value: unknown): string[] {
+  if (!value) {
+    return []
+  }
+
+  if (Array.isArray(value)) {
+    return value.flatMap(imageValueUrls)
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    return [stringValue(value)]
+  }
+
+  if (typeof value !== "object") {
+    return []
+  }
+
+  const record = value as Record<string, unknown>
+  return [
+    record.url,
+    record.contentUrl,
+    record.thumbnailUrl,
+    record.src,
+  ].flatMap(imageValueUrls)
+}
+
+export function uniqueImageUrls(urls: string[], baseUrl: string) {
+  return [
+    ...new Set(
+      urls
+        .map((url) => absoluteUrl(url, baseUrl))
+        .filter((url) => /^https?:\/\//i.test(url))
+    ),
+  ]
+}
+
+export function productImageUrls(
+  html: string,
+  baseUrl: string,
+  product?: Record<string, unknown>
+) {
+  const jsonLdProduct = product ?? productJsonLd(html)
+  const itempropImages = [
+    ...html.matchAll(
+      /<(?:meta|link|img)\b[^>]+\bitemprop=["']image["'][^>]*(?:content|href|src)=["']([^"']+)["'][^>]*>/gi
+    ),
+    ...html.matchAll(
+      /<(?:meta|link|img)\b[^>]+(?:content|href|src)=["']([^"']+)["'][^>]*\bitemprop=["']image["'][^>]*>/gi
+    ),
+  ].map((match) => decodeHtml(match[1]))
+
+  return uniqueImageUrls(
+    [
+      ...imageValueUrls(jsonLdProduct?.image),
+      ...imageValueUrls(jsonLdProduct?.thumbnailUrl),
+      metaContent(html, ["og:image", "og:image:secure_url", "twitter:image"]),
+      ...itempropImages,
+    ],
+    baseUrl
+  )
+}
+
 export function productJsonLd(html: string) {
   return jsonLdBlocks(html)
     .flatMap(flattenJsonLd)

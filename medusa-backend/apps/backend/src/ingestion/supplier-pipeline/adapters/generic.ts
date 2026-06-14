@@ -2,6 +2,7 @@ import {
   firstMatch,
   metaContent,
   nestedString,
+  productImageUrls,
   productJsonLd,
   stringValue,
   stripTags,
@@ -69,6 +70,7 @@ export function genericProductExtract(
   const description =
     nestedString(product, ["description"]) ||
     metaContent(html, ["og:description", "description", "twitter:description"])
+  const imageUrls = productImageUrls(html, candidate.url, product)
 
   return {
     sku:
@@ -93,6 +95,7 @@ export function genericProductExtract(
       /((?:box|pkg|pack|package|case|bag|bottle|tube|syringe|unit)\s+of\s+[0-9][A-Za-z0-9/-]*)/i,
     ]),
     unit_of_measure: "",
+    image_url: imageUrls[0] ?? "",
     price: extractPrice(html, product),
     price_basis: "each",
     availability: availabilityFromProductJson(product),
@@ -102,6 +105,7 @@ export function genericProductExtract(
       sitemap_url: candidate.sitemap_url,
       confidence_score: candidate.confidence_score,
       reasons: candidate.reasons,
+      image_urls: imageUrls,
     },
   }
 }

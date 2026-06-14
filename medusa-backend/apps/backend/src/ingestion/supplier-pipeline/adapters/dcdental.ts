@@ -1,4 +1,4 @@
-import { firstMatch, stripTags } from "../html"
+import { firstMatch, productImageUrls, stripTags } from "../html"
 import type {
   ExtractedProductRow,
   ProductPageCandidate,
@@ -13,6 +13,9 @@ type DCDentalApiItem = {
   isbackorderable?: boolean
   isinstock?: boolean
   itemid?: string
+  itemimages_detail?: unknown
+  itemimages?: unknown
+  itemimage?: unknown
   manufacturer?: string
   onlinecustomerprice_detail?: {
     onlinecustomerprice?: number
@@ -24,6 +27,55 @@ type DCDentalApiItem = {
   storedisplayname2?: string
   storedescription?: string
   urlcomponent?: string
+}
+
+function apiImageValues(value: unknown): string[] {
+  if (!value) {
+    return []
+  }
+
+  if (Array.isArray(value)) {
+    return value.flatMap(apiImageValues)
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    return [String(value)]
+  }
+
+  if (typeof value !== "object") {
+    return []
+  }
+
+  const record = value as Record<string, unknown>
+  return [
+    record.url,
+    record.src,
+    record.fullurl,
+    record.mediaurl,
+    record.thumbnailurl,
+  ].flatMap(apiImageValues)
+}
+
+function imageUrls(candidate: ProductPageCandidate, html: string, item: DCDentalApiItem | undefined) {
+  const apiImages = [
+    item?.itemimage,
+    item?.itemimages,
+    item?.itemimages_detail,
+  ].flatMap(apiImageValues)
+
+  return [
+    ...new Set(
+      [...apiImages, ...productImageUrls(html, candidate.url)]
+        .map((url) => {
+          try {
+            return new URL(url, candidate.origin).href
+          } catch {
+            return ""
+          }
+        })
+        .filter(Boolean)
+    ),
+  ]
 }
 
 function apiJson(html: string) {
@@ -133,6 +185,7 @@ export const dcDentalAdapter: SupplierProductAdapter = {
     const description = productDescription(html, item) || name
     const { category, subcategory } = categoryParts(candidate, item)
     const sku = item?.itemid || htmlSku(html)
+    const images = imageUrls(candidate, html, item)
 
     return {
       sku,
@@ -144,6 +197,7 @@ export const dcDentalAdapter: SupplierProductAdapter = {
       subcategory,
       product_line: item?.custitem_quik_view_subcat2 || "",
       product_url: pathProductUrl(candidate, item),
+      image_url: images[0] ?? "",
       pack_size: packSize(`${name} ${description} ${item?.custitem_dc_specs ?? ""}`),
       unit_of_measure: "",
       price: price(item),
@@ -158,6 +212,7 @@ export const dcDentalAdapter: SupplierProductAdapter = {
         sitemap_url: candidate.sitemap_url,
         confidence_score: candidate.confidence_score,
         reasons: candidate.reasons,
+        image_urls: images,
       },
     }
   },
